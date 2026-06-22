@@ -27,15 +27,27 @@
   .subtitle{ font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:0.8vh; }
   .description{ font-size:2.8vw; line-height:1.4; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
 
-  .viewer-wrap{ position:relative; margin:1vh 0 0 0; flex:1; display:flex; align-items:center; justify-content:center; min-height:180px; overflow:hidden; }
+  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:50vh; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
   #viewer3d{ width:100%; height:100%; position:relative; }
   #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
 
   .loading-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#999; text-align:center; padding:0 10vw; }
   .error-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
 
-  .hotspot-anchor{ position:absolute; width:1.6vw; height:1.6vw; max-width:8px; max-height:8px; border-radius:50%; background:var(--gold-soft); pointer-events:none; }
-  .hotspot-number{ position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:var(--card); border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:600; cursor:pointer; }
+  .hotspot-anchor{ position:absolute; width:1.6vw; height:1.6vw; max-width:8px; max-height:8px; border-radius:50%; background:var(--gold-soft); pointer-events:none; transform:translate(-50%,-50%); }
+  .hotspot-number{ position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:var(--card); border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:600; cursor:pointer; transform:translate(-50%,-50%); }
+  .hotspot-number::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    border:1.4px solid var(--gold-soft);
+    animation: hotspotBreathe 2.4s ease-in-out infinite;
+  }
+  @keyframes hotspotBreathe{
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.55); opacity: 0; }
+  }
   #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
   #hotspots3d .hotspot-number{ pointer-events:auto; }
 
@@ -92,7 +104,7 @@
   </div>
 
   <div class="gesture-hints">
-    <span>&#x21BB;</span><span>Desliza para rotar</span><span style="color:rgba(28,27,25,0.3);">&bull;</span><span>Pellizca para acercar</span><span>&#x2197;</span>
+    <span>&#x21BB;</span><span>Desliza para rotar</span>
   </div>
 
   <button class="cta-detail">
@@ -159,6 +171,22 @@
   fillLight.position.set(-3, -2, -3);
   scene.add(fillLight);
 
+  // Environment map generado por código (sin imagen externa): metales con metalness
+  // alto necesitan algo que reflejar, o se ven planos/oscuros sin importar las luces.
+  // RoomEnvironment da un entorno neutro tipo "habitación" que sirve para esto.
+  const pmremGenerator = new THREE.PMREMGenerator(renderer);
+  const envScene = new THREE.Scene();
+  envScene.background = new THREE.Color(0xf0f0f0);
+  const envLight1 = new THREE.PointLight(0xffffff, 800, 20);
+  envLight1.position.set(5, 5, 5);
+  envScene.add(envLight1);
+  const envLight2 = new THREE.PointLight(0xffffff, 400, 20);
+  envLight2.position.set(-5, 3, -5);
+  envScene.add(envLight2);
+  const envTexture = pmremGenerator.fromScene(envScene, 0.04).texture;
+  scene.environment = envTexture;
+  pmremGenerator.dispose();
+
   const modelGroup = new THREE.Group();
   scene.add(modelGroup);
 
@@ -206,8 +234,11 @@
               // en valores por defecto que oscurecen la textura real. Los normalizamos
               // a algo razonable para una pieza de metal con textura/grabado real
               // (no un metal espejado: la textura ya aporta el detalle visual).
-              mat.metalness = 0.3;
-              mat.roughness = 0.55;
+              // Valores para metal pulido/brillante (plata, oro). Para metal con
+              // pátina/desgaste (como la vasija de prueba anterior) usar metalness
+              // ~0.3 y roughness ~0.55 en su lugar — ver bitácora de materiales.
+              mat.metalness = 0.85;
+              mat.roughness = 0.25;
               mat.needsUpdate = true;
             }
           });
@@ -221,10 +252,16 @@
   // tamaño del modelo (0 a 1 en cada eje) en vez de unidades absolutas — así
   // funcionan igual sin importar la escala real de cada GLB que carguemos a futuro.
   // x: 0 = izquierda, 1 = derecha. y: 0 = abajo, 1 = arriba. z: 0 = atrás, 1 = adelante.
+  // Cada hotspot se define por una dirección angular desde el centro del modelo
+  // (azimuth: ángulo horizontal en grados, 0=adelante, 90=derecha, etc.;
+  // heightFraction: 0=base del modelo, 1=tope del modelo) en vez de coordenadas
+  // de bounding box — esto permite anclar el punto a la SUPERFICIE REAL de la
+  // pieza vía raycasting, en vez de caer "en el aire" dentro de una caja rectangular
+  // que no sigue la forma curva del objeto.
   const HOTSPOTS_3D = [
-    { id: 'hotspot-1', fx: 0.85, fy: 0.85, fz: 0.5, label: 'Asa derecha' },
-    { id: 'hotspot-2', fx: 0.85, fy: 0.45, fz: 0.5, label: 'Cuerpo central' },
-    { id: 'hotspot-3', fx: 0.5,  fy: 0.05, fz: 0.5, label: 'Base' },
+    { id: 'hotspot-1', azimuthDeg: 35,  heightFraction: 0.75, label: 'Borde superior' },
+    { id: 'hotspot-2', azimuthDeg: 110, heightFraction: 0.45, label: 'Cuerpo central' },
+    { id: 'hotspot-3', azimuthDeg: 200, heightFraction: 0.1,  label: 'Base' },
   ];
 
   const hotspotContainer = document.getElementById('hotspots3d');
@@ -273,8 +310,23 @@
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z) || 1;
-      const scale = 2.2 / maxDim;
+
+      // Calculamos la escala para que el modelo ocupe exactamente el 70% del ancho
+      // visible del visor a la distancia fija de la cámara (ya no hay zoom, así que
+      // esta distancia es constante). Usamos la fórmula del frustum de una cámara
+      // perspectiva: ancho visible a distancia d = 2 * d * tan(fov/2) * aspect.
+      const TARGET_WIDTH_FRACTION = 0.7;
+      const cameraDistance = camera.position.z;
+      const vFov = (camera.fov * Math.PI) / 180;
+      const visibleHeightAtDistance = 2 * Math.tan(vFov / 2) * cameraDistance;
+      const visibleWidthAtDistance = visibleHeightAtDistance * camera.aspect;
+
+      // Usamos el diámetro horizontal real del modelo (X, ya que es el eje que
+      // domina el "ancho" visual al rotar sobre Y) para calcular qué escala lo
+      // hace ocupar el 70% de ese ancho visible.
+      const horizontalExtent = Math.max(size.x, size.z); // cubre rotación en cualquier orientación
+      const scale = (visibleWidthAtDistance * TARGET_WIDTH_FRACTION) / horizontalExtent;
+
       model.scale.setScalar(scale);
       model.position.sub(center.multiplyScalar(scale));
       modelGroup.add(model);
@@ -284,6 +336,7 @@
       // ubicarse de forma relativa (fx/fy/fz de 0 a 1) sin importar la escala original del GLB.
       modelBoxForHotspots = new THREE.Box3().setFromObject(model);
       modelCenterForHotspots = modelBoxForHotspots.getCenter(new THREE.Vector3());
+      computeHotspotAnchors(model);
 
       try {
         await applySpecGlossTextureManually(gltf);
@@ -337,30 +390,10 @@
   }, { passive: true });
   renderer.domElement.addEventListener('touchend', onUp);
 
-  // Zoom: rueda del mouse + pellizco de dos dedos (táctil)
-  renderer.domElement.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    camera.position.z = Math.max(1.5, Math.min(8, camera.position.z + e.deltaY * 0.01));
-  }, { passive: false });
-
-  let pinchStartDist = null;
-  renderer.domElement.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      pinchStartDist = Math.hypot(dx, dy);
-    }
-  }, { passive: true });
-  renderer.domElement.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2 && pinchStartDist != null) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.hypot(dx, dy);
-      const delta = pinchStartDist - dist;
-      camera.position.z = Math.max(1.5, Math.min(8, camera.position.z + delta * 0.01));
-      pinchStartDist = dist;
-    }
-  }, { passive: true });
+  // Zoom eliminado a propósito: el modelo ya ocupa un porcentaje fijo y considerable
+  // de la pantalla desde el principio (es el protagonista), así que no hace falta
+  // acercarlo más. Esto también evita el desplazamiento desprolijo de los hotspots
+  // hacia afuera que ocurría al hacer zoom, y reduce código/superficie de bugs.
 
   // ---------- HOTSPOTS ANCLADOS EN 3D (declaración movida arriba, antes de loader.load,
   // para que modelBoxForHotspots exista cuando el callback de carga la usa) ----------
@@ -390,22 +423,63 @@
     };
   }
 
+  // Anclajes reales calculados UNA VEZ cuando el modelo carga (no en cada frame:
+  // la geometría local no cambia, solo rota — recalcular el raycast en cada frame
+  // sería trabajo innecesario). Se completan en computeHotspotAnchors(), llamada
+  // desde loader.load() después de centrar/escalar el modelo.
+  const hotspotAnchorsLocal = {}; // { id: THREE.Vector3 en espacio local de modelGroup }
+
+  function computeHotspotAnchors(model) {
+    const anchorRaycaster = new THREE.Raycaster();
+    const box = new THREE.Box3().setFromObject(model);
+    const sphere = new THREE.Sphere();
+    box.getBoundingSphere(sphere);
+    // Radio de partida para el rayo: bien afuera del modelo, para garantizar
+    // que el rayo hacia el centro siempre atraviese la superficie real.
+    const rayOriginDistance = sphere.radius * 2.5;
+
+    HOTSPOTS_3D.forEach((h) => {
+      const azimuthRad = (h.azimuthDeg * Math.PI) / 180;
+      const y = sphere.center.y - sphere.radius + sphere.radius * 2 * h.heightFraction;
+
+      // Punto de partida del rayo: bien afuera del modelo, en la dirección angular
+      // indicada, a la altura deseada.
+      const origin = new THREE.Vector3(
+        sphere.center.x + Math.sin(azimuthRad) * rayOriginDistance,
+        y,
+        sphere.center.z + Math.cos(azimuthRad) * rayOriginDistance
+      );
+      const direction = sphere.center.clone().setY(y).sub(origin).normalize();
+
+      anchorRaycaster.set(origin, direction);
+      const intersects = anchorRaycaster.intersectObject(model, true);
+
+      if (intersects.length > 0) {
+        // Primer punto de impacto = superficie real exterior del modelo, en
+        // coordenadas LOCALES de modelGroup (donde vive el resto de la lógica).
+        hotspotAnchorsLocal[h.id] = model.parent.worldToLocal(intersects[0].point.clone());
+      } else {
+        // Fallback si el rayo no pega contra nada (geometría con huecos, etc.):
+        // usamos un punto en la superficie de la esfera envolvente, mejor que nada.
+        const fallback = sphere.center.clone().add(
+          new THREE.Vector3(Math.sin(azimuthRad), 0, Math.cos(azimuthRad)).multiplyScalar(sphere.radius)
+        );
+        fallback.y = y;
+        hotspotAnchorsLocal[h.id] = fallback;
+      }
+    });
+  }
+
   function updateHotspotPositions() {
-    if (!modelBoxForHotspots || !modelCenterForHotspots) return;
-    const { min, max } = modelBoxForHotspots;
+    if (!modelCenterForHotspots) return;
     const center = modelCenterForHotspots;
 
     HOTSPOTS_3D.forEach((h) => {
-      const localAnchor = new THREE.Vector3(
-        min.x + (max.x - min.x) * h.fx,
-        min.y + (max.y - min.y) * h.fy,
-        min.z + (max.z - min.z) * h.fz
-      );
+      const localAnchor = hotspotAnchorsLocal[h.id];
+      if (!localAnchor) return;
 
-      // Dirección automática "hacia afuera": el vector desde el centro del modelo
-      // hasta el punto de anclaje, normalizado. Funciona bien para formas convexas
-      // típicas de piezas de museo (vasijas, esculturas) sin necesitar detección
-      // de espacio libre real — ver nota al usuario sobre BT futuro con dirección manual.
+      // Dirección "hacia afuera": desde el centro del modelo hasta el punto de
+      // anclaje real en la superficie — la línea sale en línea recta desde ahí.
       const outwardDir = localAnchor.clone().sub(center).normalize();
       const localNumberPos = localAnchor.clone().add(outwardDir.multiplyScalar(HOTSPOT_LINE_LENGTH));
 
@@ -419,10 +493,6 @@
       const els = hotspotElements[h.id];
       if (!els) return;
 
-      // El número SIEMPRE se muestra (clampeado dentro de pantalla), incluso si
-      // queda momentáneamente detrás de cámara por rotación — en ese caso lo dejamos
-      // en el último borde válido en vez de hacerlo desaparecer, para que el usuario
-      // nunca "pierda" un hotspot de la vista.
       const w = mount.clientWidth;
       const hgt = mount.clientHeight;
       const clampedX = Math.max(SCREEN_CLAMP_MARGIN, Math.min(w - SCREEN_CLAMP_MARGIN, numberScreen.x));
@@ -430,11 +500,7 @@
 
       els.number.style.left = `${clampedX}px`;
       els.number.style.top = `${clampedY}px`;
-      els.number.style.transform = 'translate(-50%, -50%)';
 
-      // El punto de anclaje y la línea SÍ se ocultan si quedan detrás de cámara
-      // o detrás de la geometría del modelo (oclusión real vía raycasting),
-      // porque ahí no tiene sentido mostrar "de dónde sale" la línea.
       let anchorOccluded = anchorScreen.behindCamera;
       if (!anchorOccluded) {
         const direction = worldAnchor.clone().sub(camera.position).normalize();
@@ -454,7 +520,6 @@
         els.line.style.display = 'block';
         els.anchor.style.left = `${anchorScreen.x}px`;
         els.anchor.style.top = `${anchorScreen.y}px`;
-        els.anchor.style.transform = 'translate(-50%, -50%)';
 
         els.line.setAttribute('x1', anchorScreen.x);
         els.line.setAttribute('y1', anchorScreen.y);
