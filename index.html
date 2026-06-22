@@ -44,6 +44,14 @@
   .cta-sub{ font-size:3.3vw; }
   .cta-arrow{ color:var(--gold-soft); font-size:4.5vw; flex-shrink:0; }
 </style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 </head>
 <body>
 
@@ -115,27 +123,10 @@
 </script>
 
 <script type="module">
-  document.getElementById('loadingMsg').textContent = 'Iniciando módulo JS…';
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-  let THREE, GLTFLoader;
-  try {
-    THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
-    document.getElementById('loadingMsg').textContent = 'Three.js cargado. Cargando GLTFLoader…';
-  } catch (e) {
-    document.getElementById('loadingMsg').className = 'error-msg';
-    document.getElementById('loadingMsg').innerHTML = 'Falló import de Three.js: ' + e.message;
-    throw e;
-  }
-
-  try {
-    const mod = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js');
-    GLTFLoader = mod.GLTFLoader;
-    document.getElementById('loadingMsg').textContent = 'GLTFLoader cargado. Iniciando escena 3D…';
-  } catch (e) {
-    document.getElementById('loadingMsg').className = 'error-msg';
-    document.getElementById('loadingMsg').innerHTML = 'Falló import de GLTFLoader: ' + e.message;
-    throw e;
-  }
+  document.getElementById('loadingMsg').textContent = 'Módulos cargados. Iniciando escena 3D…';
 
   // URL del modelo 3D real, servido directamente desde GitHub raw (sin pasar por jsDelivr,
   // que puede tardar o fallar en su primera petición a un repo recién creado).
