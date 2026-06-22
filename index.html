@@ -94,9 +94,48 @@
 
 </div>
 
+<script>
+  // Captura cualquier error de JS (incluyendo errores de carga de módulos ES,
+  // que en Safari móvil pueden fallar silenciosamente sin pasar por los catch normales)
+  // y lo muestra en pantalla, ya que no podemos abrir la consola del navegador fácil en un celular.
+  window.addEventListener('error', (e) => {
+    const el = document.getElementById('loadingMsg');
+    if (el) {
+      el.className = 'error-msg';
+      el.innerHTML = 'Error JS: ' + (e.message || 'desconocido') + '<br><span style="font-size:0.75em;opacity:0.7;">' + (e.filename || '') + ':' + (e.lineno || '') + '</span>';
+    }
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const el = document.getElementById('loadingMsg');
+    if (el) {
+      el.className = 'error-msg';
+      el.innerHTML = 'Promesa rechazada: ' + (e.reason?.message || e.reason || 'desconocido');
+    }
+  });
+</script>
+
 <script type="module">
-  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-  import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+  document.getElementById('loadingMsg').textContent = 'Iniciando módulo JS…';
+
+  let THREE, GLTFLoader;
+  try {
+    THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+    document.getElementById('loadingMsg').textContent = 'Three.js cargado. Cargando GLTFLoader…';
+  } catch (e) {
+    document.getElementById('loadingMsg').className = 'error-msg';
+    document.getElementById('loadingMsg').innerHTML = 'Falló import de Three.js: ' + e.message;
+    throw e;
+  }
+
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js');
+    GLTFLoader = mod.GLTFLoader;
+    document.getElementById('loadingMsg').textContent = 'GLTFLoader cargado. Iniciando escena 3D…';
+  } catch (e) {
+    document.getElementById('loadingMsg').className = 'error-msg';
+    document.getElementById('loadingMsg').innerHTML = 'Falló import de GLTFLoader: ' + e.message;
+    throw e;
+  }
 
   // URL del modelo 3D real, servido directamente desde GitHub raw (sin pasar por jsDelivr,
   // que puede tardar o fallar en su primera petición a un repo recién creado).
