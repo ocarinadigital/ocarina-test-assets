@@ -12,7 +12,7 @@
   body{ background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
   .screen{ max-width:480px; margin:0 auto; height:100vh; display:flex; flex-direction:column; position:relative; overflow:hidden; }
 
-  header{ display:flex; align-items:flex-start; justify-content:space-between; padding:2.5vh 6vw 0 6vw; flex-shrink:0; }
+  header{ display:flex; align-items:flex-start; justify-content:space-between; padding:1.5vh 6vw 0 6vw; flex-shrink:0; }
   .logo{ display:flex; align-items:center; gap:2.2vw; }
   .logo-mark{ width:11vw; height:11vw; max-width:50px; max-height:50px; border:1px solid var(--ink); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-weight:600; font-size:5vw; }
   .logo-text{ font-size:2.6vw; line-height:1.45; letter-spacing:0.1em; text-transform:uppercase; font-weight:500; }
@@ -20,14 +20,14 @@
   .back-link{ text-align:right; color:var(--gold); font-size:2.5vw; line-height:1.3; cursor:pointer; }
   .back-link .arrow{ font-size:4.5vw; margin:0 0 0.6vh auto; }
 
-  .title-block{ padding:1.5vh 7vw 0 7vw; text-align:center; flex-shrink:0; }
-  .badge{ display:inline-block; border:1px solid var(--gold-soft); color:var(--gold); font-size:2.5vw; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; padding:0.7vh 4vw; border-radius:100px; margin-bottom:1.2vh; }
-  h1{ font-family:'Playfair Display',serif; font-weight:500; font-size:7.4vw; line-height:1.1; margin-bottom:1vh; }
-  .rule{ width:36px; height:1px; background:var(--gold-soft); margin:0 auto 1vh auto; }
-  .subtitle{ font-size:2.7vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:1.2vh; }
-  .description{ font-size:3vw; line-height:1.5; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
+  .title-block{ padding:0.8vh 7vw 0 7vw; text-align:center; flex-shrink:0; }
+  .badge{ display:inline-block; border:1px solid var(--gold-soft); color:var(--gold); font-size:2.5vw; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; padding:0.5vh 4vw; border-radius:100px; margin-bottom:0.8vh; }
+  h1{ font-family:'Playfair Display',serif; font-weight:500; font-size:6.8vw; line-height:1.05; margin-bottom:0.6vh; }
+  .rule{ width:36px; height:1px; background:var(--gold-soft); margin:0 auto 0.6vh auto; }
+  .subtitle{ font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:0.8vh; }
+  .description{ font-size:2.8vw; line-height:1.4; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
 
-  .viewer-wrap{ position:relative; margin:1.5vh 0 0 0; flex:1; display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden; }
+  .viewer-wrap{ position:relative; margin:1vh 0 0 0; flex:1; display:flex; align-items:center; justify-content:center; min-height:180px; overflow:hidden; }
   #viewer3d{ width:100%; height:100%; position:relative; }
   #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
 
@@ -38,9 +38,9 @@
   #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
   #hotspots3d .hotspot{ pointer-events:auto; }
 
-  .gesture-hints{ display:flex; align-items:center; justify-content:center; gap:2.5vw; padding:1.2vh 6vw; color:var(--gold); font-size:2.7vw; flex-shrink:0; }
+  .gesture-hints{ display:flex; align-items:center; justify-content:center; gap:2.5vw; padding:0.8vh 6vw; color:var(--gold); font-size:2.5vw; flex-shrink:0; }
 
-  .cta-detail{ margin:0 6vw 2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.6vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
+  .cta-detail{ margin:0 6vw 1.2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
   .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
   .cta-title{ font-size:3.3vw; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--gold); margin-bottom:0.4vh; }
   .cta-sub{ font-size:3.3vw; }
@@ -150,11 +150,11 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   mount.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
   dirLight.position.set(3, 5, 4);
   scene.add(dirLight);
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
   fillLight.position.set(-3, -2, -3);
   scene.add(fillLight);
 
@@ -201,6 +201,12 @@
             if (mat.name === matDef.name) {
               mat.map = diffuseTex;
               mat.color.set(0xffffff); // blanco para no tintar la textura
+              // GLTFLoader, al no entender esta extensión, deja metalness/roughness
+              // en valores por defecto que oscurecen la textura real. Los normalizamos
+              // a algo razonable para una pieza de metal con textura/grabado real
+              // (no un metal espejado: la textura ya aporta el detalle visual).
+              mat.metalness = 0.3;
+              mat.roughness = 0.55;
               mat.needsUpdate = true;
             }
           });
@@ -341,6 +347,8 @@
   // Proyecta cada hotspot de coordenadas 3D (relativas al modelo) a coordenadas
   // 2D de pantalla, considerando la rotación y el zoom actuales de la cámara.
   // Esto es lo que hace que "viajen con la pieza" en vez de quedar fijos en pantalla.
+  const occlusionRaycaster = new THREE.Raycaster();
+
   function updateHotspotPositions() {
     if (!modelBoxForHotspots) return;
     const { min, max } = modelBoxForHotspots;
@@ -365,9 +373,32 @@
       const el = hotspotElements[h.id];
       if (!el) return;
 
-      // Si el punto queda detrás de la cámara (z > 1 en espacio de proyección),
-      // ocultamos el hotspot en vez de mostrarlo en una posición incorrecta.
-      if (screenPos.z > 1) {
+      // Caso 1: el punto queda fuera del frustum de la cámara (detrás de ella).
+      const behindCamera = screenPos.z > 1;
+
+      // Caso 2: oclusión real — lanzamos un rayo desde la cámara hacia el punto
+      // del hotspot, y vemos si la geometría del propio modelo lo bloquea (es decir,
+      // si hay una intersección con el modelo a una distancia MENOR que la distancia
+      // real al hotspot, significa que el hotspot está "detrás" de la pieza desde
+      // el punto de vista actual de la cámara).
+      let occludedByModel = false;
+      if (!behindCamera) {
+        const direction = worldPos.clone().sub(camera.position).normalize();
+        occlusionRaycaster.set(camera.position, direction);
+        const distanceToHotspot = camera.position.distanceTo(worldPos);
+
+        const intersects = occlusionRaycaster.intersectObject(modelGroup, true);
+        if (intersects.length > 0) {
+          // Restamos un pequeño margen (epsilon) para no ocultar el hotspot por
+          // intersectar la superficie justo en el punto donde él mismo está anclado.
+          const closestHit = intersects[0].distance;
+          if (closestHit < distanceToHotspot - 0.05) {
+            occludedByModel = true;
+          }
+        }
+      }
+
+      if (behindCamera || occludedByModel) {
         el.style.display = 'none';
       } else {
         el.style.display = 'flex';
