@@ -34,9 +34,10 @@
   .loading-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#999; text-align:center; padding:0 10vw; }
   .error-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
 
-  .hotspot{ position:absolute; width:7.5vw; height:7.5vw; max-width:34px; max-height:34px; border-radius:50%; background:var(--card); border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:4vw; cursor:pointer; }
+  .hotspot-anchor{ position:absolute; width:1.6vw; height:1.6vw; max-width:8px; max-height:8px; border-radius:50%; background:var(--gold-soft); pointer-events:none; }
+  .hotspot-number{ position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:var(--card); border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:600; cursor:pointer; }
   #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
-  #hotspots3d .hotspot{ pointer-events:auto; }
+  #hotspots3d .hotspot-number{ pointer-events:auto; }
 
   .gesture-hints{ display:flex; align-items:center; justify-content:center; gap:2.5vw; padding:0.8vh 6vw; color:var(--gold); font-size:2.5vw; flex-shrink:0; }
 
@@ -133,7 +134,7 @@
 
   // URL del modelo 3D real, servido directamente desde GitHub raw (sin pasar por jsDelivr,
   // que puede tardar o fallar en su primera petición a un repo recién creado).
-  const MODEL_URL = 'https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/hydria_apothecary_vase.glb';
+  const MODEL_URL = 'https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/silver_offering_bowl_c._1880_ce.glb';
 
   const mount = document.getElementById('viewer3d');
   const loadingMsg = document.getElementById('loadingMsg');
@@ -227,18 +228,37 @@
   ];
 
   const hotspotContainer = document.getElementById('hotspots3d');
-  const hotspotElements = {};
+  const hotspotElements = {}; // { numberEl, anchorEl, lineEl }
   let modelBoxForHotspots = null; // se completa una vez que el modelo carga (ver loader.load abajo)
+  let modelCenterForHotspots = null;
+
+  // SVG compartido para todas las líneas de los hotspots — un solo elemento
+  // que cubre todo el viewer-wrap, con una línea por hotspot dentro.
+  const hotspotSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  hotspotSvg.setAttribute('style', 'position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;');
+  hotspotContainer.appendChild(hotspotSvg);
 
   function createHotspotElements() {
-    HOTSPOTS_3D.forEach((h) => {
-      const el = document.createElement('div');
-      el.className = 'hotspot';
-      el.textContent = '+';
-      el.title = h.label;
-      el.style.position = 'absolute';
-      hotspotContainer.appendChild(el);
-      hotspotElements[h.id] = el;
+    HOTSPOTS_3D.forEach((h, idx) => {
+      // Línea recta del punto de anclaje al número.
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('stroke', 'var(--gold-soft)');
+      line.setAttribute('stroke-width', '1.5');
+      hotspotSvg.appendChild(line);
+
+      // Punto esférico en la superficie del modelo (mismo color que la línea).
+      const anchor = document.createElement('div');
+      anchor.className = 'hotspot-anchor';
+      hotspotContainer.appendChild(anchor);
+
+      // Círculo numerado al final de la línea — siempre visible, nunca se oculta.
+      const number = document.createElement('div');
+      number.className = 'hotspot-number';
+      number.textContent = String(idx + 1);
+      number.title = h.label;
+      hotspotContainer.appendChild(number);
+
+      hotspotElements[h.id] = { line, anchor, number };
     });
   }
   createHotspotElements();
@@ -263,6 +283,7 @@
       // en el espacio local de modelGroup — este es el que usan los hotspots para
       // ubicarse de forma relativa (fx/fy/fz de 0 a 1) sin importar la escala original del GLB.
       modelBoxForHotspots = new THREE.Box3().setFromObject(model);
+      modelCenterForHotspots = modelBoxForHotspots.getCenter(new THREE.Vector3());
 
       try {
         await applySpecGlossTextureManually(gltf);
@@ -349,65 +370,100 @@
   // Esto es lo que hace que "viajen con la pieza" en vez de quedar fijos en pantalla.
   const occlusionRaycaster = new THREE.Raycaster();
 
+  // Distancia (en unidades del modelo, ya normalizado a ~2.2 de tamaño máximo)
+  // que el número se aleja del punto de anclaje en la superficie. Suficiente
+  // para despegarse visualmente de la pieza sin alejarse demasiado.
+  const HOTSPOT_LINE_LENGTH = 0.55;
+
+  // Margen de seguridad en píxeles para que el número nunca quede pegado
+  // al borde exacto del visor — siempre dentro de la pantalla con este respiro.
+  const SCREEN_CLAMP_MARGIN = 18;
+
+  function projectToScreen(vec3) {
+    const halfW = mount.clientWidth / 2;
+    const halfH = mount.clientHeight / 2;
+    const p = vec3.clone().project(camera);
+    return {
+      x: p.x * halfW + halfW,
+      y: -p.y * halfH + halfH,
+      behindCamera: p.z > 1,
+    };
+  }
+
   function updateHotspotPositions() {
-    if (!modelBoxForHotspots) return;
+    if (!modelBoxForHotspots || !modelCenterForHotspots) return;
     const { min, max } = modelBoxForHotspots;
+    const center = modelCenterForHotspots;
 
     HOTSPOTS_3D.forEach((h) => {
-      const localPos = new THREE.Vector3(
+      const localAnchor = new THREE.Vector3(
         min.x + (max.x - min.x) * h.fx,
         min.y + (max.y - min.y) * h.fy,
         min.z + (max.z - min.z) * h.fz
       );
 
-      // Aplicamos la misma rotación que tiene el modelo actualmente (modelGroup.rotation),
-      // ya que los hotspots deben rotar junto con la pieza.
-      const worldPos = localPos.clone().applyEuler(modelGroup.rotation);
-      const screenPos = worldPos.project(camera);
+      // Dirección automática "hacia afuera": el vector desde el centro del modelo
+      // hasta el punto de anclaje, normalizado. Funciona bien para formas convexas
+      // típicas de piezas de museo (vasijas, esculturas) sin necesitar detección
+      // de espacio libre real — ver nota al usuario sobre BT futuro con dirección manual.
+      const outwardDir = localAnchor.clone().sub(center).normalize();
+      const localNumberPos = localAnchor.clone().add(outwardDir.multiplyScalar(HOTSPOT_LINE_LENGTH));
 
-      const halfW = mount.clientWidth / 2;
-      const halfH = mount.clientHeight / 2;
-      const screenX = screenPos.x * halfW + halfW;
-      const screenY = -screenPos.y * halfH + halfH;
+      // Aplicamos la misma rotación que tiene el modelo actualmente.
+      const worldAnchor = localAnchor.clone().applyEuler(modelGroup.rotation);
+      const worldNumber = localNumberPos.clone().applyEuler(modelGroup.rotation);
 
-      const el = hotspotElements[h.id];
-      if (!el) return;
+      const anchorScreen = projectToScreen(worldAnchor);
+      const numberScreen = projectToScreen(worldNumber);
 
-      // Caso 1: el punto queda fuera del frustum de la cámara (detrás de ella).
-      const behindCamera = screenPos.z > 1;
+      const els = hotspotElements[h.id];
+      if (!els) return;
 
-      // Caso 2: oclusión real — lanzamos un rayo desde la cámara hacia el punto
-      // del hotspot, y vemos si la geometría del propio modelo lo bloquea (es decir,
-      // si hay una intersección con el modelo a una distancia MENOR que la distancia
-      // real al hotspot, significa que el hotspot está "detrás" de la pieza desde
-      // el punto de vista actual de la cámara).
-      let occludedByModel = false;
-      if (!behindCamera) {
-        const direction = worldPos.clone().sub(camera.position).normalize();
+      // El número SIEMPRE se muestra (clampeado dentro de pantalla), incluso si
+      // queda momentáneamente detrás de cámara por rotación — en ese caso lo dejamos
+      // en el último borde válido en vez de hacerlo desaparecer, para que el usuario
+      // nunca "pierda" un hotspot de la vista.
+      const w = mount.clientWidth;
+      const hgt = mount.clientHeight;
+      const clampedX = Math.max(SCREEN_CLAMP_MARGIN, Math.min(w - SCREEN_CLAMP_MARGIN, numberScreen.x));
+      const clampedY = Math.max(SCREEN_CLAMP_MARGIN, Math.min(hgt - SCREEN_CLAMP_MARGIN, numberScreen.y));
+
+      els.number.style.left = `${clampedX}px`;
+      els.number.style.top = `${clampedY}px`;
+      els.number.style.transform = 'translate(-50%, -50%)';
+
+      // El punto de anclaje y la línea SÍ se ocultan si quedan detrás de cámara
+      // o detrás de la geometría del modelo (oclusión real vía raycasting),
+      // porque ahí no tiene sentido mostrar "de dónde sale" la línea.
+      let anchorOccluded = anchorScreen.behindCamera;
+      if (!anchorOccluded) {
+        const direction = worldAnchor.clone().sub(camera.position).normalize();
         occlusionRaycaster.set(camera.position, direction);
-        const distanceToHotspot = camera.position.distanceTo(worldPos);
-
+        const distanceToAnchor = camera.position.distanceTo(worldAnchor);
         const intersects = occlusionRaycaster.intersectObject(modelGroup, true);
-        if (intersects.length > 0) {
-          // Restamos un pequeño margen (epsilon) para no ocultar el hotspot por
-          // intersectar la superficie justo en el punto donde él mismo está anclado.
-          const closestHit = intersects[0].distance;
-          if (closestHit < distanceToHotspot - 0.05) {
-            occludedByModel = true;
-          }
+        if (intersects.length > 0 && intersects[0].distance < distanceToAnchor - 0.05) {
+          anchorOccluded = true;
         }
       }
 
-      if (behindCamera || occludedByModel) {
-        el.style.display = 'none';
+      if (anchorOccluded) {
+        els.anchor.style.display = 'none';
+        els.line.style.display = 'none';
       } else {
-        el.style.display = 'flex';
-        el.style.left = `${screenX}px`;
-        el.style.top = `${screenY}px`;
-        el.style.transform = 'translate(-50%, -50%)';
+        els.anchor.style.display = 'block';
+        els.line.style.display = 'block';
+        els.anchor.style.left = `${anchorScreen.x}px`;
+        els.anchor.style.top = `${anchorScreen.y}px`;
+        els.anchor.style.transform = 'translate(-50%, -50%)';
+
+        els.line.setAttribute('x1', anchorScreen.x);
+        els.line.setAttribute('y1', anchorScreen.y);
+        els.line.setAttribute('x2', clampedX);
+        els.line.setAttribute('y2', clampedY);
       }
     });
   }
+
 
   function animate() {
     requestAnimationFrame(animate);
