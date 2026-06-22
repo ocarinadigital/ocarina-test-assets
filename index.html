@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFB · Display AR (prueba 3D)</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#F7F3EC; --ink:#1C2333; --gold:#9C7A3C; --gold-soft:#C7AD7B; --card:#FFFFFF; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html, body{ height:100%; overflow:hidden; }
+  body{ background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
+  .screen{ max-width:480px; margin:0 auto; height:100vh; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+
+  header{ display:flex; align-items:flex-start; justify-content:space-between; padding:2.5vh 6vw 0 6vw; flex-shrink:0; }
+  .logo{ display:flex; align-items:center; gap:2.2vw; }
+  .logo-mark{ width:11vw; height:11vw; max-width:50px; max-height:50px; border:1px solid var(--ink); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-weight:600; font-size:5vw; }
+  .logo-text{ font-size:2.6vw; line-height:1.45; letter-spacing:0.1em; text-transform:uppercase; font-weight:500; }
+  .logo-text span{ display:block; }
+  .back-link{ text-align:right; color:var(--gold); font-size:2.5vw; line-height:1.3; cursor:pointer; }
+  .back-link .arrow{ font-size:4.5vw; margin:0 0 0.6vh auto; }
+
+  .title-block{ padding:1.5vh 7vw 0 7vw; text-align:center; flex-shrink:0; }
+  .badge{ display:inline-block; border:1px solid var(--gold-soft); color:var(--gold); font-size:2.5vw; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; padding:0.7vh 4vw; border-radius:100px; margin-bottom:1.2vh; }
+  h1{ font-family:'Playfair Display',serif; font-weight:500; font-size:7.4vw; line-height:1.1; margin-bottom:1vh; }
+  .rule{ width:36px; height:1px; background:var(--gold-soft); margin:0 auto 1vh auto; }
+  .subtitle{ font-size:2.7vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:1.2vh; }
+  .description{ font-size:3vw; line-height:1.5; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
+
+  .viewer-wrap{ position:relative; margin:1.5vh 0 0 0; flex:1; display:flex; align-items:center; justify-content:center; min-height:0; overflow:hidden; }
+  #viewer3d{ width:100%; height:100%; position:relative; }
+  #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
+
+  .loading-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#999; text-align:center; padding:0 10vw; }
+  .error-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
+
+  .hotspot{ position:absolute; width:7.5vw; height:7.5vw; max-width:34px; max-height:34px; border-radius:50%; background:var(--card); border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:4vw; cursor:pointer; }
+
+  .gesture-hints{ display:flex; align-items:center; justify-content:center; gap:2.5vw; padding:1.2vh 6vw; color:var(--gold); font-size:2.7vw; flex-shrink:0; }
+
+  .cta-detail{ margin:0 6vw 2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.6vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
+  .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
+  .cta-title{ font-size:3.3vw; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--gold); margin-bottom:0.4vh; }
+  .cta-sub{ font-size:3.3vw; }
+  .cta-arrow{ color:var(--gold-soft); font-size:4.5vw; flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header>
+    <div class="logo">
+      <div class="logo-mark">M</div>
+      <div class="logo-text">
+        <span>Museo</span><span>Fernández</span><span>Blanco</span>
+      </div>
+    </div>
+    <div class="back-link">
+      <div class="arrow">&#8592;</div>
+      volver al<br>escáner
+    </div>
+  </header>
+
+  <div class="title-block">
+    <div class="badge">Pieza complementaria</div>
+    <h1>Mate de plata cincelada</h1>
+    <div class="rule"></div>
+    <div class="subtitle">Siglo XVIII – Virreinato del Río de la Plata</div>
+    <p class="description">Una pieza que no forma parte de la exhibición actual, pero complementa la historia de la época.</p>
+  </div>
+
+  <div class="viewer-wrap">
+    <div id="viewer3d">
+      <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
+    </div>
+    <div class="hotspot" style="top:22%; left:62%;">+</div>
+    <div class="hotspot" style="top:50%; left:68%;">+</div>
+    <div class="hotspot" style="top:78%; left:58%;">+</div>
+  </div>
+
+  <div class="gesture-hints">
+    <span>&#x21BB;</span><span>Desliza para rotar</span><span style="color:rgba(28,27,25,0.3);">&bull;</span><span>Pellizca para acercar</span><span>&#x2197;</span>
+  </div>
+
+  <button class="cta-detail">
+    <div class="cta-icon">&#128214;</div>
+    <div style="flex:1;">
+      <div class="cta-title">Detalle de la pieza</div>
+      <div class="cta-sub">Historia, origen y uso</div>
+    </div>
+    <div class="cta-arrow">&#8250;</div>
+  </button>
+
+</div>
+
+<script type="module">
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+  import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+
+  // URL del modelo 3D real, servido desde tu repo público de GitHub vía jsDelivr.
+  const MODEL_URL = 'https://cdn.jsdelivr.net/gh/ocarinadigital/ocarina-test-assets@main/hydria_apothecary_vase.glb';
+
+  const mount = document.getElementById('viewer3d');
+  const loadingMsg = document.getElementById('loadingMsg');
+
+  const w = mount.clientWidth;
+  const h = mount.clientHeight;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+  camera.position.set(0, 0, 4);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  mount.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+  dirLight.position.set(3, 5, 4);
+  scene.add(dirLight);
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+  fillLight.position.set(-3, -2, -3);
+  scene.add(fillLight);
+
+  const modelGroup = new THREE.Group();
+  scene.add(modelGroup);
+
+  const loader = new GLTFLoader();
+  loader.load(
+    MODEL_URL,
+    (gltf) => {
+      loadingMsg.remove();
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      const scale = 2.2 / maxDim;
+      model.scale.setScalar(scale);
+      model.position.sub(center.multiplyScalar(scale));
+      modelGroup.add(model);
+    },
+    (progress) => {
+      if (progress.total) {
+        const pct = Math.round((progress.loaded / progress.total) * 100);
+        loadingMsg.textContent = `Cargando modelo 3D… ${pct}%`;
+      }
+    },
+    (err) => {
+      console.error('Error cargando GLB:', err);
+      loadingMsg.className = 'error-msg';
+      loadingMsg.textContent = 'No se pudo cargar el modelo 3D.';
+    }
+  );
+
+  // Rotación por arrastre (mouse y táctil)
+  let isDragging = false;
+  let prevX = 0, prevY = 0;
+  let rotY = 0, rotX = 0;
+
+  function onDown(x, y) { isDragging = true; prevX = x; prevY = y; }
+  function onMove(x, y) {
+    if (!isDragging) return;
+    const dx = x - prevX;
+    const dy = y - prevY;
+    rotY += dx * 0.01;
+    rotX += dy * 0.01;
+    rotX = Math.max(-1.2, Math.min(1.2, rotX));
+    modelGroup.rotation.y = rotY;
+    modelGroup.rotation.x = rotX;
+    prevX = x; prevY = y;
+  }
+  function onUp() { isDragging = false; }
+
+  renderer.domElement.addEventListener('mousedown', (e) => onDown(e.clientX, e.clientY));
+  window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+  window.addEventListener('mouseup', onUp);
+
+  renderer.domElement.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) onDown(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  renderer.domElement.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  renderer.domElement.addEventListener('touchend', onUp);
+
+  // Zoom: rueda del mouse + pellizco de dos dedos (táctil)
+  renderer.domElement.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    camera.position.z = Math.max(1.5, Math.min(8, camera.position.z + e.deltaY * 0.01));
+  }, { passive: false });
+
+  let pinchStartDist = null;
+  renderer.domElement.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDist = Math.hypot(dx, dy);
+    }
+  }, { passive: true });
+  renderer.domElement.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && pinchStartDist != null) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const delta = pinchStartDist - dist;
+      camera.position.z = Math.max(1.5, Math.min(8, camera.position.z + delta * 0.01));
+      pinchStartDist = dist;
+    }
+  }, { passive: true });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    const newW = mount.clientWidth;
+    const newH = mount.clientHeight;
+    camera.aspect = newW / newH;
+    camera.updateProjectionMatrix();
+    renderer.setSize(newW, newH);
+  });
+</script>
+
+</body>
+</html>
