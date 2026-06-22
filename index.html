@@ -98,8 +98,9 @@
   import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
   import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
-  // URL del modelo 3D real, servido desde tu repo público de GitHub vía jsDelivr.
-  const MODEL_URL = 'https://cdn.jsdelivr.net/gh/ocarinadigital/ocarina-test-assets@main/hydria_apothecary_vase.glb';
+  // URL del modelo 3D real, servido directamente desde GitHub raw (sin pasar por jsDelivr,
+  // que puede tardar o fallar en su primera petición a un repo recién creado).
+  const MODEL_URL = 'https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/hydria_apothecary_vase.glb';
 
   const mount = document.getElementById('viewer3d');
   const loadingMsg = document.getElementById('loadingMsg');
@@ -128,9 +129,20 @@
   scene.add(modelGroup);
 
   const loader = new GLTFLoader();
+  let loadResolved = false;
+
+  const timeoutId = setTimeout(() => {
+    if (!loadResolved) {
+      loadingMsg.className = 'error-msg';
+      loadingMsg.innerHTML = 'El modelo está demorando demasiado o no responde.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>';
+    }
+  }, 15000);
+
   loader.load(
     MODEL_URL,
     (gltf) => {
+      loadResolved = true;
+      clearTimeout(timeoutId);
       loadingMsg.remove();
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);
@@ -149,9 +161,11 @@
       }
     },
     (err) => {
+      loadResolved = true;
+      clearTimeout(timeoutId);
       console.error('Error cargando GLB:', err);
       loadingMsg.className = 'error-msg';
-      loadingMsg.textContent = 'No se pudo cargar el modelo 3D.';
+      loadingMsg.innerHTML = 'No se pudo cargar el modelo 3D.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>';
     }
   );
 
