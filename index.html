@@ -35,6 +35,8 @@
   .error-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
 
   .hotspot{ position:absolute; width:7.5vw; height:7.5vw; max-width:34px; max-height:34px; border-radius:50%; background:var(--card); border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:4vw; cursor:pointer; }
+  #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
+  #hotspots3d .hotspot{ pointer-events:auto; }
 
   .gesture-hints{ display:flex; align-items:center; justify-content:center; gap:2.5vw; padding:1.2vh 6vw; color:var(--gold); font-size:2.7vw; flex-shrink:0; }
 
@@ -82,9 +84,10 @@
     <div id="viewer3d">
       <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
     </div>
-    <div class="hotspot" style="top:22%; left:62%;">+</div>
-    <div class="hotspot" style="top:50%; left:68%;">+</div>
-    <div class="hotspot" style="top:78%; left:58%;">+</div>
+    <!-- Los hotspots ya no se posicionan a mano en HTML/CSS: se generan dinámicamente
+         desde JS, anclados a coordenadas 3D reales del modelo (ver HOTSPOTS_3D abajo),
+         y se reproyectan a 2D en cada frame para que viajen con la rotación y el zoom. -->
+    <div id="hotspots3d"></div>
   </div>
 
   <div class="gesture-hints">
@@ -168,9 +171,75 @@
     }
   }, 15000);
 
+  // GLTFLoader (a partir de cierta versión de three.js) dejó de soportar la extensión
+  // KHR_materials_pbrSpecularGlossiness: carga la geometría perfecto, pero ignora la
+  // textura difusa de ese material (se ve gris plano). Esta función la aplica a mano,
+  // leyendo el JSON crudo del GLTF que el parser ya descargó y decodificó.
+  async function applySpecGlossTextureManually(gltf) {
+    const json = gltf.parser.json;
+    if (!json.extensionsUsed || !json.extensionsUsed.includes('KHR_materials_pbrSpecularGlossiness')) {
+      return; // El modelo no usa esta extensión, no hay nada que parchear.
+    }
+
+    for (let matIndex = 0; matIndex < (json.materials || []).length; matIndex++) {
+      const matDef = json.materials[matIndex];
+      const specGloss = matDef.extensions && matDef.extensions.KHR_materials_pbrSpecularGlossiness;
+      if (!specGloss || specGloss.diffuseTexture == null) continue;
+
+      // parser.getDependency('texture', index) descarga y decodifica la textura
+      // referenciada, devolviendo un THREE.Texture ya listo para usar.
+      const diffuseTex = await gltf.parser.getDependency('texture', specGloss.diffuseTexture.index);
+      diffuseTex.colorSpace = THREE.SRGBColorSpace;
+
+      // Aplicamos esta textura a todos los meshes que usan este material por índice.
+      gltf.scene.traverse((node) => {
+        if (node.isMesh && node.material) {
+          const materials = Array.isArray(node.material) ? node.material : [node.material];
+          materials.forEach((mat) => {
+            // GLTFLoader nombra los materiales según el glTF original, así que
+            // comparamos por nombre (más confiable acá que por índice interno de three.js).
+            if (mat.name === matDef.name) {
+              mat.map = diffuseTex;
+              mat.color.set(0xffffff); // blanco para no tintar la textura
+              mat.needsUpdate = true;
+            }
+          });
+        }
+      });
+    }
+  }
+
+  // ---------- HOTSPOTS ANCLADOS EN 3D ----------
+  // Coordenadas en el espacio LOCAL del modelo, definidas como fracciones del
+  // tamaño del modelo (0 a 1 en cada eje) en vez de unidades absolutas — así
+  // funcionan igual sin importar la escala real de cada GLB que carguemos a futuro.
+  // x: 0 = izquierda, 1 = derecha. y: 0 = abajo, 1 = arriba. z: 0 = atrás, 1 = adelante.
+  const HOTSPOTS_3D = [
+    { id: 'hotspot-1', fx: 0.85, fy: 0.85, fz: 0.5, label: 'Asa derecha' },
+    { id: 'hotspot-2', fx: 0.85, fy: 0.45, fz: 0.5, label: 'Cuerpo central' },
+    { id: 'hotspot-3', fx: 0.5,  fy: 0.05, fz: 0.5, label: 'Base' },
+  ];
+
+  const hotspotContainer = document.getElementById('hotspots3d');
+  const hotspotElements = {};
+  let modelBoxForHotspots = null; // se completa una vez que el modelo carga (ver loader.load abajo)
+
+  function createHotspotElements() {
+    HOTSPOTS_3D.forEach((h) => {
+      const el = document.createElement('div');
+      el.className = 'hotspot';
+      el.textContent = '+';
+      el.title = h.label;
+      el.style.position = 'absolute';
+      hotspotContainer.appendChild(el);
+      hotspotElements[h.id] = el;
+    });
+  }
+  createHotspotElements();
+
   loader.load(
     MODEL_URL,
-    (gltf) => {
+    async (gltf) => {
       loadResolved = true;
       clearTimeout(timeoutId);
       loadingMsg.remove();
@@ -183,6 +252,17 @@
       model.scale.setScalar(scale);
       model.position.sub(center.multiplyScalar(scale));
       modelGroup.add(model);
+
+      // Recalculamos el bounding box ya con la escala y posición finales aplicadas,
+      // en el espacio local de modelGroup — este es el que usan los hotspots para
+      // ubicarse de forma relativa (fx/fy/fz de 0 a 1) sin importar la escala original del GLB.
+      modelBoxForHotspots = new THREE.Box3().setFromObject(model);
+
+      try {
+        await applySpecGlossTextureManually(gltf);
+      } catch (e) {
+        console.warn('No se pudo aplicar la textura manualmente:', e);
+      }
     },
     (progress) => {
       if (progress.total) {
@@ -255,8 +335,52 @@
     }
   }, { passive: true });
 
+  // ---------- HOTSPOTS ANCLADOS EN 3D (declaración movida arriba, antes de loader.load,
+  // para que modelBoxForHotspots exista cuando el callback de carga la usa) ----------
+
+  // Proyecta cada hotspot de coordenadas 3D (relativas al modelo) a coordenadas
+  // 2D de pantalla, considerando la rotación y el zoom actuales de la cámara.
+  // Esto es lo que hace que "viajen con la pieza" en vez de quedar fijos en pantalla.
+  function updateHotspotPositions() {
+    if (!modelBoxForHotspots) return;
+    const { min, max } = modelBoxForHotspots;
+
+    HOTSPOTS_3D.forEach((h) => {
+      const localPos = new THREE.Vector3(
+        min.x + (max.x - min.x) * h.fx,
+        min.y + (max.y - min.y) * h.fy,
+        min.z + (max.z - min.z) * h.fz
+      );
+
+      // Aplicamos la misma rotación que tiene el modelo actualmente (modelGroup.rotation),
+      // ya que los hotspots deben rotar junto con la pieza.
+      const worldPos = localPos.clone().applyEuler(modelGroup.rotation);
+      const screenPos = worldPos.project(camera);
+
+      const halfW = mount.clientWidth / 2;
+      const halfH = mount.clientHeight / 2;
+      const screenX = screenPos.x * halfW + halfW;
+      const screenY = -screenPos.y * halfH + halfH;
+
+      const el = hotspotElements[h.id];
+      if (!el) return;
+
+      // Si el punto queda detrás de la cámara (z > 1 en espacio de proyección),
+      // ocultamos el hotspot en vez de mostrarlo en una posición incorrecta.
+      if (screenPos.z > 1) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = 'flex';
+        el.style.left = `${screenX}px`;
+        el.style.top = `${screenY}px`;
+        el.style.transform = 'translate(-50%, -50%)';
+      }
+    });
+  }
+
   function animate() {
     requestAnimationFrame(animate);
+    updateHotspotPositions();
     renderer.render(scene, camera);
   }
   animate();
