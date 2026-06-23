@@ -51,19 +51,6 @@
   #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
   #hotspots3d .hotspot-number{ pointer-events:auto; }
 
-  .rotate-ring{
-    position:absolute;
-    bottom:8%;
-    left:50%;
-    transform:translateX(-50%);
-    width:78%;
-    max-width:340px;
-    height:auto;
-    color:var(--gold);
-    opacity:0.55;
-    z-index:3;
-    pointer-events:none;
-  }
   .rotate-hint{
     position:absolute;
     bottom:1%;
@@ -119,16 +106,9 @@
     <div id="viewer3d">
       <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
 
-      <!-- Anillo perimetral elíptico (un círculo horizontal real alrededor del modelo
-           se ve como elipse desde la perspectiva de la cámara) con flechas en los
-           extremos. Vive DENTRO de #viewer3d (no del viewer-wrap completo) para que
-           su posición absoluta se calcule respecto al canvas real, consistente con
-           el cálculo en JS que baja el modelo hasta esta misma altura ("el piso"). -->
-      <svg class="rotate-ring" viewBox="0 0 300 90" preserveAspectRatio="xMidYMid meet">
-        <ellipse cx="150" cy="45" rx="140" ry="22" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.9"/>
-        <path d="M14 38 L4 45 L14 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M286 38 L296 45 L286 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      <!-- El anillo perimetral ahora es geometría 3D real (ver groundRingForRotationHint
+           en el JS), fijo en la escena, en el mismo plano que el suelo. Evita la
+           conversión pantalla↔mundo que fallaba con el enfoque anterior en HTML/SVG. -->
       <div class="rotate-hint">
         <span>Desliza para rotar</span>
       </div>
@@ -368,32 +348,13 @@
       model.position.sub(center.multiplyScalar(scale));
       modelGroup.add(model);
 
-      // Bajamos el modelo para que su base se apoye exactamente en la altura Y del
-      // mundo 3D que corresponde a donde está dibujado el anillo "piso" en HTML
-      // (.rotate-ring, posicionado con bottom:8% dentro de #viewer3d). Convertimos
-      // esa posición de pantalla a coordenada Y real usando la geometría inversa
-      // de la cámara (el mismo principio que usamos para proyectar hotspots, pero
-      // al revés: de pantalla a mundo, no de mundo a pantalla).
-      const RING_BOTTOM_FRACTION = 0.08; // debe coincidir con el bottom:8% del CSS de .rotate-ring
-      const screenYForRing = mount.clientHeight * (1 - RING_BOTTOM_FRACTION); // posición en píxeles del canvas, desde arriba
-      const ndcY = -(screenYForRing / mount.clientHeight) * 2 + 1; // normalized device coordinates (-1 a 1, eje Y invertido respecto a píxeles)
-      const ringWorldY = -Math.tan(vFov / 2) * cameraDistance * ndcY;
-
-      // Tras escalar/centrar el modelo (ya hecho arriba), su base real (mínimo en Y)
-      // está en este valor — lo bajamos para que coincida con ringWorldY.
-      const modelBottomY = (box.min.y - center.y) * scale;
-      model.position.y += ringWorldY - modelBottomY;
-
       // Recalculamos el bounding box ya con la escala y posición finales aplicadas,
       // en el espacio local de modelGroup — este es el que usan los hotspots para
       // ubicarse de forma relativa (fx/fy/fz de 0 a 1) sin importar la escala original del GLB.
       modelBoxForHotspots = new THREE.Box3().setFromObject(model);
       modelCenterForHotspots = modelBoxForHotspots.getCenter(new THREE.Vector3());
       computeHotspotAnchors(model);
-      // Sombra y plano de suelo removidos: no convencían visualmente y además
-      // tenían un costo de renderizado (shadow maps) que no vale la pena sin un
-      // resultado que se vea bien. El anillo de rotación con flechas vive ahora
-      // como hint HTML (.rotate-hint), fusionado con el texto "Desliza para rotar".
+      groundRingForRotationHint(modelBoxForHotspots.min.y);
 
       try {
         await applySpecGlossTextureManually(gltf);
@@ -416,34 +377,33 @@
     }
   );
 
-  // Rotación por arrastre (mouse y táctil)
+  // Rotación por arrastre (mouse y táctil) — SOLO horizontal (eje Y). Se eliminó
+  // la rotación vertical a pedido: simplifica la interacción, reduce el costo de
+  // cálculo (un eje menos que recalcular en cada frame), y evita ver el modelo
+  // desde ángulos raros (por abajo/arriba) que no aportan a una pieza de museo.
   let isDragging = false;
-  let prevX = 0, prevY = 0;
-  let rotY = 0, rotX = 0;
+  let prevX = 0;
+  let rotY = 0;
 
-  function onDown(x, y) { isDragging = true; prevX = x; prevY = y; }
-  function onMove(x, y) {
+  function onDown(x) { isDragging = true; prevX = x; }
+  function onMove(x) {
     if (!isDragging) return;
     const dx = x - prevX;
-    const dy = y - prevY;
     rotY += dx * 0.01;
-    rotX += dy * 0.01;
-    rotX = Math.max(-1.2, Math.min(1.2, rotX));
     modelGroup.rotation.y = rotY;
-    modelGroup.rotation.x = rotX;
-    prevX = x; prevY = y;
+    prevX = x;
   }
   function onUp() { isDragging = false; }
 
-  renderer.domElement.addEventListener('mousedown', (e) => onDown(e.clientX, e.clientY));
-  window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+  renderer.domElement.addEventListener('mousedown', (e) => onDown(e.clientX));
+  window.addEventListener('mousemove', (e) => onMove(e.clientX));
   window.addEventListener('mouseup', onUp);
 
   renderer.domElement.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) onDown(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length === 1) onDown(e.touches[0].clientX);
   }, { passive: true });
   renderer.domElement.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length === 1) onMove(e.touches[0].clientX);
   }, { passive: true });
   renderer.domElement.addEventListener('touchend', onUp);
 
@@ -489,6 +449,35 @@
   // sería trabajo innecesario). Se completan en computeHotspotAnchors(), llamada
   // desde loader.load() después de centrar/escalar el modelo.
   const hotspotAnchorsLocal = {}; // { id: THREE.Vector3 en espacio local de modelGroup }
+
+  // Anillo perimetral elíptico (geometría 3D real, no HTML) que sugiere visualmente
+  // la posibilidad de rotar el objeto. Vive en `scene` directamente (no en modelGroup),
+  // así que NO rota junto con la pieza — representa el plano fijo del "suelo".
+  // Se posiciona en la base real del modelo (groundY), una sola vez al cargar.
+  function groundRingForRotationHint(groundY) {
+    const ringRadius = 1.3;
+    const ringGroup = new THREE.Group();
+
+    const ringGeo = new THREE.RingGeometry(ringRadius - 0.01, ringRadius + 0.01, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x9C7A3C, transparent: true, opacity: 0.45, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ringGroup.add(ring);
+
+    [0, Math.PI].forEach((angle) => {
+      const arrow = new THREE.Mesh(
+        new THREE.ConeGeometry(0.06, 0.14, 12),
+        new THREE.MeshBasicMaterial({ color: 0x9C7A3C, transparent: true, opacity: 0.6 })
+      );
+      arrow.position.set(Math.sin(angle) * ringRadius, 0, Math.cos(angle) * ringRadius);
+      arrow.rotation.x = Math.PI / 2;
+      arrow.rotation.z = angle + Math.PI / 2;
+      ringGroup.add(arrow);
+    });
+
+    ringGroup.position.y = groundY;
+    scene.add(ringGroup);
+  }
 
   function computeHotspotAnchors(model) {
     const anchorRaycaster = new THREE.Raycaster();
