@@ -142,7 +142,7 @@
 
   .rotate-arc-ring{
     position:absolute;
-    bottom:0%;
+    bottom:8%;
     left:50%;
     transform:translateX(-50%);
     width:96%;
@@ -235,29 +235,24 @@
     <div id="viewer3d">
       <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
 
-      <!-- El anillo perimetral ahora es geometría 3D real (ver groundRingForRotationHint
-           en el JS), fijo en la escena, en el mismo plano que el suelo. Evita la
-           conversión pantalla↔mundo que fallaba con el enfoque anterior en HTML/SVG. -->
-      <!-- Anillo validado: círculo real (visto en perspectiva como elipse) concéntrico
-           con el modelo, con el cuarto superior (más lejano de cámara) eliminado entre
-           los puntos a 45°, y flechas tangenciales en los dos extremos abiertos que
-           continúan la dirección del arco — simbolizando rotación libre y continua. -->
-      <svg class="rotate-arc-ring" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <marker id="ringArrowStart" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
-          </marker>
-          <marker id="ringArrowEnd" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
-          </marker>
-        </defs>
-        <!-- Arco de 75%: el cuarto superior (entre los dos puntos a 45°) queda fuera
-             del path — solo se dibuja el resto, empezando y terminando justo en esos
-             dos puntos de corte. -->
-        <path d="M 72.2 56.2 A 110 21 0 0 0 40 71 A 110 21 0 0 0 150 92 A 110 21 0 0 0 260 71 A 110 21 0 0 0 227.8 56.2"
-              fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65"
-              marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
-      </svg>
+    </div>
+
+    <!-- El anillo se sacó de adentro de #viewer3d (que ya estaba en su límite bottom:0%)
+         y ahora vive en .viewer-wrap completo, que tiene más espacio disponible hacia
+         abajo para poder seguir bajándolo. -->
+    <svg class="rotate-arc-ring" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="ringArrowStart" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
+        </marker>
+        <marker id="ringArrowEnd" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <path d="M 64.4 54.7 A 121 23.1 0 0 0 29 71 A 121 23.1 0 0 0 150 94.1 A 121 23.1 0 0 0 271 71 A 121 23.1 0 0 0 235.6 54.7"
+            fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65"
+            marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
+    </svg>
 
       <!-- Texto + ícono de mano (imagen real provista por el cliente, aplicada como
            máscara para tintarla con el dorado exacto de la paleta), debajo del anillo. -->
