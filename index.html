@@ -51,22 +51,29 @@
   #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
   #hotspots3d .hotspot-number{ pointer-events:auto; }
 
+  .rotate-ring{
+    position:absolute;
+    bottom:8%;
+    left:50%;
+    transform:translateX(-50%);
+    width:78%;
+    max-width:340px;
+    height:auto;
+    color:var(--gold);
+    opacity:0.55;
+    z-index:3;
+    pointer-events:none;
+  }
   .rotate-hint{
     position:absolute;
     bottom:1%;
     left:50%;
     transform:translateX(-50%);
-    display:flex;
-    align-items:center;
-    gap:2.5vw;
     color:var(--gold);
     font-size:2.6vw;
     white-space:nowrap;
     z-index:4;
-    width:90%;
-    justify-content:center;
   }
-  .rotate-arrow{ width:22vw; max-width:110px; height:auto; color:var(--gold); flex-shrink:0; }
 
   .cta-detail{ margin:0 6vw 1.2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
   .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
@@ -117,12 +124,18 @@
          y se reproyectan a 2D en cada frame para que viajen con la rotación y el zoom. -->
     <div id="hotspots3d"></div>
 
-    <!-- Hint de rotación dentro del propio visor, sobre el "suelo" del modelo,
-         con flechas perimetrales a izquierda/derecha del texto (igual a la referencia). -->
+    <!-- Anillo perimetral elíptico (un círculo horizontal real alrededor del modelo
+         se ve como elipse desde la perspectiva de la cámara) con flechas en los
+         extremos, centrado geométricamente con el modelo. El texto va dentro. -->
+    <svg class="rotate-ring" viewBox="0 0 300 90" preserveAspectRatio="xMidYMid meet">
+      <ellipse cx="150" cy="45" rx="140" ry="22" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.9"/>
+      <!-- Punta de flecha izquierda, tangente a la elipse -->
+      <path d="M14 38 L4 45 L14 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Punta de flecha derecha, tangente a la elipse -->
+      <path d="M286 38 L296 45 L286 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
     <div class="rotate-hint">
-      <svg class="rotate-arrow rotate-arrow-left" viewBox="0 0 100 40"><path d="M95 30 C 75 38, 35 38, 8 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12 L18 10 M8 12 L13 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <span>Desliza para rotar</span>
-      <svg class="rotate-arrow rotate-arrow-right" viewBox="0 0 100 40"><path d="M5 30 C 25 38, 65 38, 92 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M92 12 L82 10 M92 12 L87 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </div>
   </div>
 
