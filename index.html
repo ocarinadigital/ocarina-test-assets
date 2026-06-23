@@ -258,19 +258,19 @@
          y no se puede intercalar el canvas entre ambos. -->
 
     <!-- SVG 1: sombra, z-index bajo (ver CSS .shadow-plane), debajo del canvas. -->
-    <svg class="shadow-plane" viewBox="0 0 400 130" preserveAspectRatio="xMidYMid meet">
+    <svg class="shadow-plane" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
       <defs>
         <radialGradient id="shadowGradient" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stop-color="#000000" stop-opacity="1"/>
           <stop offset="65%" stop-color="#000000" stop-opacity="0"/>
         </radialGradient>
       </defs>
-      <ellipse cx="200" cy="71" rx="150" ry="28.5" fill="url(#shadowGradient)"/>
+      <ellipse cx="150" cy="71" rx="145" ry="27.6" fill="url(#shadowGradient)"/>
     </svg>
 
     <!-- SVG 2: anillo, z-index alto, encima del canvas. Mismo viewBox/coordenadas
          que el SVG de la sombra, por eso ambos quedan centrados en el mismo punto. -->
-    <svg class="rotate-arc-ring" viewBox="0 0 400 130" preserveAspectRatio="xMidYMid meet">
+    <svg class="rotate-arc-ring" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
       <defs>
         <marker id="ringArrowStart" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
@@ -279,7 +279,7 @@
           <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
         </marker>
       </defs>
-      <path d="M 114.4 54.7 A 121 23.1 0 0 0 79 71 A 121 23.1 0 0 0 200 94.1 A 121 23.1 0 0 0 321 71 A 121 23.1 0 0 0 285.6 54.7"
+      <path d="M 64.4 54.7 A 121 23.1 0 0 0 29 71 A 121 23.1 0 0 0 150 94.1 A 121 23.1 0 0 0 271 71 A 121 23.1 0 0 0 235.6 54.7"
             fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65"
             marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
     </svg>
