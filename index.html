@@ -27,8 +27,8 @@
   .subtitle{ font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:0.8vh; }
   .description{ font-size:2.8vw; line-height:1.4; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
 
-  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:37.5vh; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  #viewer3d{ width:100%; height:100%; position:relative; }
+  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:41.25vh; flex-shrink:0; overflow:hidden; }
+  #viewer3d{ width:100%; height:85%; position:absolute; top:0; left:0; }
   #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
 
   .loading-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#999; text-align:center; padding:0 10vw; }
@@ -51,7 +51,20 @@
   #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
   #hotspots3d .hotspot-number{ pointer-events:auto; }
 
-  .gesture-hints{ display:flex; align-items:center; justify-content:center; gap:2.5vw; padding:0.8vh 6vw; color:var(--gold); font-size:2.5vw; flex-shrink:0; }
+  .rotate-hint{
+    position:absolute;
+    bottom:2%;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    align-items:center;
+    gap:2vw;
+    color:var(--gold);
+    font-size:2.6vw;
+    white-space:nowrap;
+    z-index:4;
+  }
+  .rotate-arrow{ width:9vw; max-width:42px; height:auto; color:var(--gold); flex-shrink:0; }
 
   .cta-detail{ margin:0 6vw 1.2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
   .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
@@ -101,10 +114,14 @@
          desde JS, anclados a coordenadas 3D reales del modelo (ver HOTSPOTS_3D abajo),
          y se reproyectan a 2D en cada frame para que viajen con la rotación y el zoom. -->
     <div id="hotspots3d"></div>
-  </div>
 
-  <div class="gesture-hints">
-    <span>&#x21BB;</span><span>Desliza para rotar</span>
+    <!-- Hint de rotación dentro del propio visor, sobre el "suelo" del modelo,
+         con flechas perimetrales a izquierda/derecha del texto (igual a la referencia). -->
+    <div class="rotate-hint">
+      <svg class="rotate-arrow rotate-arrow-left" viewBox="0 0 60 30"><path d="M50 25 A25 25 0 0 0 28 3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M28 3 L34 8 M28 3 L23 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Desliza para rotar</span>
+      <svg class="rotate-arrow rotate-arrow-right" viewBox="0 0 60 30"><path d="M10 25 A25 25 0 0 1 32 3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M32 3 L26 8 M32 3 L37 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
   </div>
 
   <button class="cta-detail">
@@ -167,7 +184,7 @@
 
   scene.add(new THREE.AmbientLight(0xffffff, 1.6));
   const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
-  dirLight.position.set(3, 5, 4);
+  dirLight.position.set(0.4, 6, 0.6); // casi cenital: la sombra cae hacia abajo, no a un costado
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.set(1024, 1024);
   dirLight.shadow.camera.near = 0.5;
@@ -175,7 +192,7 @@
   dirLight.shadow.bias = -0.001;
   scene.add(dirLight);
   const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
-  fillLight.position.set(-3, -2, -3);
+  fillLight.position.set(-3, 1, -2); // lateral pero sin componente negativo en Y, solo para definir volumen — no emite sombra (castShadow no activado)
   scene.add(fillLight);
 
   // Environment map generado por código (sin imagen externa): metales con metalness
@@ -266,7 +283,7 @@
   // pieza vía raycasting, en vez de caer "en el aire" dentro de una caja rectangular
   // que no sigue la forma curva del objeto.
   const HOTSPOTS_3D = [
-    { id: 'hotspot-1', azimuthDeg: 35,  heightFraction: 0.75, label: 'Borde superior' },
+    { id: 'hotspot-1', azimuthDeg: 35,  heightFraction: 0.95, label: 'Borde superior' },
     { id: 'hotspot-2', azimuthDeg: 110, heightFraction: 0.45, label: 'Cuerpo central' },
     { id: 'hotspot-3', azimuthDeg: 200, heightFraction: 0.1,  label: 'Base' },
   ];
@@ -322,7 +339,7 @@
       // visible del visor a la distancia fija de la cámara (ya no hay zoom, así que
       // esta distancia es constante). Usamos la fórmula del frustum de una cámara
       // perspectiva: ancho visible a distancia d = 2 * d * tan(fov/2) * aspect.
-      const TARGET_WIDTH_FRACTION = 0.7;
+      const TARGET_WIDTH_FRACTION = 0.63; // 10% menos que 0.7, para dar más aire a los hotspots contra los bordes de pantalla
       const cameraDistance = camera.position.z;
       const vFov = (camera.fov * Math.PI) / 180;
       const visibleHeightAtDistance = 2 * Math.tan(vFov / 2) * cameraDistance;
@@ -568,30 +585,38 @@
       els.number.style.left = `${clampedX}px`;
       els.number.style.top = `${clampedY}px`;
 
-      let anchorOccluded = anchorScreen.behindCamera;
-      if (!anchorOccluded) {
-        const direction = worldAnchor.clone().sub(camera.position).normalize();
+      // Función auxiliar: ¿este punto del mundo está oculto detrás de la geometría
+      // real del modelo, visto desde la cámara actual?
+      function isOccludedByModel(worldPoint) {
+        const direction = worldPoint.clone().sub(camera.position).normalize();
         occlusionRaycaster.set(camera.position, direction);
-        const distanceToAnchor = camera.position.distanceTo(worldAnchor);
+        const distanceToPoint = camera.position.distanceTo(worldPoint);
         const intersects = occlusionRaycaster.intersectObject(modelGroup, true);
-        // Margen proporcional al tamaño real del modelo (no un valor fijo arbitrario):
-        // un margen fijo de 0.05 puede ser insignificante o excesivo según la escala
-        // real del GLB cargado, causando oclusión falsa por ruido de la propia superficie
-        // cerca del punto de anclaje.
         const occlusionMargin = (modelBoxForHotspots ? modelBoxForHotspots.getSize(new THREE.Vector3()).length() : 1) * 0.02;
-        if (intersects.length > 0 && intersects[0].distance < distanceToAnchor - occlusionMargin) {
-          anchorOccluded = true;
-        }
+        return intersects.length > 0 && intersects[0].distance < distanceToPoint - occlusionMargin;
       }
 
-      if (anchorOccluded) {
+      const anchorOccluded = anchorScreen.behindCamera || isOccludedByModel(worldAnchor);
+      const numberOccluded = numberScreen.behindCamera || isOccludedByModel(worldNumber);
+
+      // El número se oculta SOLO cuando él mismo queda tapado por la geometría
+      // (no por el anclaje). La línea y el punto de anclaje se muestran mientras
+      // el número sea visible, aunque el anclaje en la superficie ya esté oculto —
+      // así la línea se ve "hasta el final", como se pidió, en vez de cortarse
+      // apenas el punto de origen entra detrás de la pieza.
+      if (numberOccluded) {
+        els.number.style.display = 'none';
         els.anchor.style.display = 'none';
         els.line.style.display = 'none';
       } else {
-        els.anchor.style.display = 'block';
+        els.number.style.display = 'flex';
+        els.anchor.style.display = anchorOccluded ? 'none' : 'block';
         els.line.style.display = 'block';
-        els.anchor.style.left = `${anchorScreen.x}px`;
-        els.anchor.style.top = `${anchorScreen.y}px`;
+
+        if (!anchorOccluded) {
+          els.anchor.style.left = `${anchorScreen.x}px`;
+          els.anchor.style.top = `${anchorScreen.y}px`;
+        }
 
         els.line.setAttribute('x1', anchorScreen.x);
         els.line.setAttribute('y1', anchorScreen.y);
