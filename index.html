@@ -154,7 +154,7 @@
   }
   .rotate-hint-text{
     position:absolute;
-    bottom:1%;
+    bottom:-7%;
     left:50%;
     transform:translateX(-50%);
     display:flex;
@@ -165,7 +165,23 @@
     white-space:nowrap;
     z-index:4;
   }
-  .hand-icon{ width:8vw; max-width:34px; height:auto; flex-shrink:0; }
+  .hand-icon-wrap{
+    width:7vw;
+    max-width:30px;
+    height:7vw;
+    max-height:30px;
+    flex-shrink:0;
+    background-color:var(--gold);
+    opacity:0.85;
+    -webkit-mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png');
+    mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png');
+    -webkit-mask-size:contain;
+    mask-size:contain;
+    -webkit-mask-repeat:no-repeat;
+    mask-repeat:no-repeat;
+    -webkit-mask-position:center;
+    mask-position:center;
+  }
 
   .cta-detail{ margin:0 6vw 1.2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
   .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
@@ -243,13 +259,10 @@
               marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
       </svg>
 
-      <!-- Texto + ícono de mano, elemento independiente del anillo, debajo de él. -->
+      <!-- Texto + ícono de mano (imagen real provista por el cliente, aplicada como
+           máscara para tintarla con el dorado exacto de la paleta), debajo del anillo. -->
       <div class="rotate-hint-text">
-        <svg class="hand-icon" viewBox="0 0 56 28">
-          <path d="M22 18 L22 4 a3 3 0 0 1 6 0 L28 4 a3 3 0 0 1 6 0 L34 6 a3 3 0 0 1 6 0 L40 18 a8 8 0 0 1 -8 8 L26 26 a8 8 0 0 1 -6 -3 Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-          <path d="M4 12 L13 12 M13 12 L9 8 M13 12 L9 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M52 12 L43 12 M43 12 L47 8 M43 12 L47 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <div class="hand-icon-wrap"></div>
         <span>Desliza para rotar</span>
       </div>
     </div>
