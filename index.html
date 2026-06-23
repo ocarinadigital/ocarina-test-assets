@@ -140,18 +140,32 @@
   #hotspots3d{ position:absolute; inset:0; pointer-events:none; }
   #hotspots3d .hotspot-number{ pointer-events:auto; }
 
-  .rotate-ring-group{
+  .rotate-arc-ring{
     position:absolute;
-    bottom:-2%;
+    bottom:8%;
     left:50%;
     transform:translateX(-50%);
-    width:88%;
-    max-width:380px;
+    width:96%;
+    max-width:420px;
     height:auto;
     color:var(--gold);
-    z-index:4;
+    z-index:3;
     pointer-events:none;
   }
+  .rotate-hint-text{
+    position:absolute;
+    bottom:1%;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    align-items:center;
+    gap:1.8vw;
+    color:var(--gold);
+    font-size:2.6vw;
+    white-space:nowrap;
+    z-index:4;
+  }
+  .hand-icon{ width:8vw; max-width:34px; height:auto; flex-shrink:0; }
 
   .cta-detail{ margin:0 6vw 1.2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
   .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
@@ -208,29 +222,36 @@
       <!-- El anillo perimetral ahora es geometría 3D real (ver groundRingForRotationHint
            en el JS), fijo en la escena, en el mismo plano que el suelo. Evita la
            conversión pantalla↔mundo que fallaba con el enfoque anterior en HTML/SVG. -->
-      <!-- Dos arcos ABIERTOS (no una elipse cerrada): cada uno sale de un costado
-           del texto y se curva hacia afuera, simétricamente, sugiriendo la trayectoria
-           circular de rotación sin dibujar el círculo completo ni tocarse entre sí. -->
-      <svg class="rotate-ring-group" viewBox="0 0 320 90" preserveAspectRatio="xMidYMid meet">
-        <!-- Arco izquierdo: sale del costado izquierdo del texto, curva hacia arriba
-             y hacia afuera, termina en punta de flecha. -->
-        <path d="M75 45 C 35 45, 12 35, 8 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.75"/>
-        <path d="M8 12 L3 22 M8 12 L17 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.75"/>
-
-        <!-- Arco derecho: simétrico al izquierdo, sale del costado derecho del
-             texto y curva hacia arriba y hacia afuera en sentido opuesto. -->
-        <path d="M245 45 C 285 45, 308 35, 312 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.75"/>
-        <path d="M312 12 L317 22 M312 12 L303 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.75"/>
-
-        <!-- Icono de mano/gesto de deslizar, arriba del texto. -->
-        <g transform="translate(160, 25)" opacity="0.85">
-          <path d="M-6 4 L-6 -10 a3 3 0 0 1 6 0 L0 -10 a3 3 0 0 1 6 0 L6 -8 a3 3 0 0 1 6 0 L12 4 a6 6 0 0 1 -6 6 L-2 10 a6 6 0 0 1 -4 -2 Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-          <path d="M-20 -2 L-26 -2 M-26 -2 L-23 -5 M-26 -2 L-23 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M22 -2 L28 -2 M28 -2 L25 -5 M28 -2 L25 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </g>
-
-        <text x="160" y="68" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="currentColor" opacity="0.9">Desliza para rotar</text>
+      <!-- Anillo validado: círculo real (visto en perspectiva como elipse) concéntrico
+           con el modelo, con el cuarto superior (más lejano de cámara) eliminado entre
+           los puntos a 45°, y flechas tangenciales en los dos extremos abiertos que
+           continúan la dirección del arco — simbolizando rotación libre y continua. -->
+      <svg class="rotate-arc-ring" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker id="ringArrowStart" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
+          </marker>
+          <marker id="ringArrowEnd" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <!-- Arco de 75%: el cuarto superior (entre los dos puntos a 45°) queda fuera
+             del path — solo se dibuja el resto, empezando y terminando justo en esos
+             dos puntos de corte. -->
+        <path d="M 72.2 56.2 A 110 21 0 0 0 40 71 A 110 21 0 0 0 150 92 A 110 21 0 0 0 260 71 A 110 21 0 0 0 227.8 56.2"
+              fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65"
+              marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
       </svg>
+
+      <!-- Texto + ícono de mano, elemento independiente del anillo, debajo de él. -->
+      <div class="rotate-hint-text">
+        <svg class="hand-icon" viewBox="0 0 56 28">
+          <path d="M22 18 L22 4 a3 3 0 0 1 6 0 L28 4 a3 3 0 0 1 6 0 L34 6 a3 3 0 0 1 6 0 L40 18 a8 8 0 0 1 -8 8 L26 26 a8 8 0 0 1 -6 -3 Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <path d="M4 12 L13 12 M13 12 L9 8 M13 12 L9 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M52 12 L43 12 M43 12 L47 8 M43 12 L47 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Desliza para rotar</span>
+      </div>
     </div>
     <!-- Los hotspots ya no se posicionan a mano en HTML/CSS: se generan dinámicamente
          desde JS, anclados a coordenadas 3D reales del modelo (ver HOTSPOTS_3D abajo),
