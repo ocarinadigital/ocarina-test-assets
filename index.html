@@ -27,7 +27,7 @@
   .subtitle{ font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:0.8vh; }
   .description{ font-size:2.8vw; line-height:1.4; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
 
-  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:50vh; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:37.5vh; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
   #viewer3d{ width:100%; height:100%; position:relative; }
   #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
 
@@ -35,7 +35,7 @@
   .error-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
 
   .hotspot-anchor{ position:absolute; width:1.6vw; height:1.6vw; max-width:8px; max-height:8px; border-radius:50%; background:var(--gold-soft); pointer-events:none; transform:translate(-50%,-50%); }
-  .hotspot-number{ position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:var(--card); border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:600; cursor:pointer; transform:translate(-50%,-50%); }
+  .hotspot-number{ position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:#1C2333; border:1.4px solid var(--gold); color:#E8C77A; display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:700; cursor:pointer; transform:translate(-50%,-50%); box-shadow:0 2px 6px rgba(0,0,0,0.25); }
   .hotspot-number::after{
     content:'';
     position:absolute;
@@ -161,11 +161,18 @@
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   mount.appendChild(renderer.domElement);
 
   scene.add(new THREE.AmbientLight(0xffffff, 1.6));
   const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
   dirLight.position.set(3, 5, 4);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(1024, 1024);
+  dirLight.shadow.camera.near = 0.5;
+  dirLight.shadow.camera.far = 10;
+  dirLight.shadow.bias = -0.001;
   scene.add(dirLight);
   const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
   fillLight.position.set(-3, -2, -3);
@@ -319,6 +326,11 @@
       const cameraDistance = camera.position.z;
       const vFov = (camera.fov * Math.PI) / 180;
       const visibleHeightAtDistance = 2 * Math.tan(vFov / 2) * cameraDistance;
+      // Usamos el ASPECT RATIO ACTUAL DEL MOUNT en el momento de la carga para fijar
+      // el ancho visible — pero el tamaño del modelo en pantalla queda determinado por
+      // el ANCHO en píxeles del contenedor, que no cambia si solo ajustamos el alto del
+      // visor (height del CSS). Esto evita que recortar verticalmente el marco del visor
+      // afecte el tamaño visual del modelo.
       const visibleWidthAtDistance = visibleHeightAtDistance * camera.aspect;
 
       // Usamos el diámetro horizontal real del modelo (X, ya que es el eje que
@@ -331,12 +343,30 @@
       model.position.sub(center.multiplyScalar(scale));
       modelGroup.add(model);
 
+      // El modelo debe emitir sombra; recorremos todos sus meshes para activarlo
+      // (la propiedad no se hereda automáticamente al grupo completo).
+      model.traverse((node) => {
+        if (node.isMesh) node.castShadow = true;
+      });
+
       // Recalculamos el bounding box ya con la escala y posición finales aplicadas,
       // en el espacio local de modelGroup — este es el que usan los hotspots para
       // ubicarse de forma relativa (fx/fy/fz de 0 a 1) sin importar la escala original del GLB.
       modelBoxForHotspots = new THREE.Box3().setFromObject(model);
       modelCenterForHotspots = modelBoxForHotspots.getCenter(new THREE.Vector3());
       computeHotspotAnchors(model);
+
+      // Plano de "suelo" que recibe la sombra del modelo, dando la sensación de
+      // que la pieza está apoyada sobre una superficie en vez de flotar en el aire.
+      const groundY = modelBoxForHotspots.min.y;
+      const groundGeo = new THREE.PlaneGeometry(8, 8);
+      const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = groundY;
+      ground.receiveShadow = true;
+      modelGroup.add(ground);
+      groundRingForRotationHint(groundY);
 
       try {
         await applySpecGlossTextureManually(gltf);
@@ -412,6 +442,37 @@
   // al borde exacto del visor — siempre dentro de la pantalla con este respiro.
   const SCREEN_CLAMP_MARGIN = 18;
 
+  // Anillo decorativo sobre el "suelo" que sugiere visualmente la posibilidad de
+  // rotar el objeto (inspirado en la referencia: círculo tenue con flechas en los
+  // extremos). Vive en `scene` directamente (no en modelGroup) porque no debe rotar
+  // junto con la pieza — representa el plano de giro, no la pieza misma.
+  function groundRingForRotationHint(groundY) {
+    const ringRadius = 1.5;
+    const ringGroup = new THREE.Group();
+
+    const ringGeo = new THREE.RingGeometry(ringRadius - 0.01, ringRadius + 0.01, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ringGroup.add(ring);
+
+    // Dos pequeñas flechas (conos achatados) en extremos opuestos del anillo,
+    // tangentes a la circunferencia, sugiriendo la dirección de rotación.
+    [0, Math.PI].forEach((angle) => {
+      const arrow = new THREE.Mesh(
+        new THREE.ConeGeometry(0.07, 0.16, 12),
+        new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 })
+      );
+      arrow.position.set(Math.sin(angle) * ringRadius, 0, Math.cos(angle) * ringRadius);
+      arrow.rotation.x = Math.PI / 2;
+      arrow.rotation.z = angle + Math.PI / 2;
+      ringGroup.add(arrow);
+    });
+
+    ringGroup.position.y = groundY + 0.002; // ligeramente por encima del plano para que no se confunda con la sombra
+    scene.add(ringGroup);
+  }
+
   function projectToScreen(vec3) {
     const halfW = mount.clientWidth / 2;
     const halfH = mount.clientHeight / 2;
@@ -449,7 +510,13 @@
         y,
         sphere.center.z + Math.cos(azimuthRad) * rayOriginDistance
       );
-      const direction = sphere.center.clone().setY(y).sub(origin).normalize();
+      // Importante: el rayo apunta al CENTRO GEOMÉTRICO REAL (sphere.center, sin fijar
+      // la altura Y), no a un punto horizontal a la misma altura del origen. Para formas
+      // anchas y poco altas (como un bowl/cuenco), un rayo puramente horizontal puede
+      // pasar por encima o por debajo de la geometría real sin tocarla nunca, especialmente
+      // cerca de la base o el borde superior. Apuntando al centro real, el rayo entra en
+      // ángulo y siempre cruza el volumen del objeto sin importar la altura relativa.
+      const direction = sphere.center.clone().sub(origin).normalize();
 
       anchorRaycaster.set(origin, direction);
       const intersects = anchorRaycaster.intersectObject(model, true);
@@ -507,7 +574,12 @@
         occlusionRaycaster.set(camera.position, direction);
         const distanceToAnchor = camera.position.distanceTo(worldAnchor);
         const intersects = occlusionRaycaster.intersectObject(modelGroup, true);
-        if (intersects.length > 0 && intersects[0].distance < distanceToAnchor - 0.05) {
+        // Margen proporcional al tamaño real del modelo (no un valor fijo arbitrario):
+        // un margen fijo de 0.05 puede ser insignificante o excesivo según la escala
+        // real del GLB cargado, causando oclusión falsa por ruido de la propia superficie
+        // cerca del punto de anclaje.
+        const occlusionMargin = (modelBoxForHotspots ? modelBoxForHotspots.getSize(new THREE.Vector3()).length() : 1) * 0.02;
+        if (intersects.length > 0 && intersects[0].distance < distanceToAnchor - occlusionMargin) {
           anchorOccluded = true;
         }
       }
