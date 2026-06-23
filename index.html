@@ -27,7 +27,7 @@
   .subtitle{ font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:0.8vh; }
   .description{ font-size:2.8vw; line-height:1.4; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
 
-  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:41.25vh; flex-shrink:0; overflow:hidden; }
+  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:46vh; flex-shrink:0; overflow:hidden; }
   #viewer3d{ width:100%; height:85%; position:absolute; top:0; left:0; }
   #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
 
@@ -118,9 +118,9 @@
     <!-- Hint de rotación dentro del propio visor, sobre el "suelo" del modelo,
          con flechas perimetrales a izquierda/derecha del texto (igual a la referencia). -->
     <div class="rotate-hint">
-      <svg class="rotate-arrow rotate-arrow-left" viewBox="0 0 60 30"><path d="M50 25 A25 25 0 0 0 28 3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M28 3 L34 8 M28 3 L23 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="rotate-arrow rotate-arrow-left" viewBox="0 0 80 24"><path d="M76 18 C 60 18, 30 18, 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 6 L16 4 M8 6 L11 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <span>Desliza para rotar</span>
-      <svg class="rotate-arrow rotate-arrow-right" viewBox="0 0 60 30"><path d="M10 25 A25 25 0 0 1 32 3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M32 3 L26 8 M32 3 L37 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg class="rotate-arrow rotate-arrow-right" viewBox="0 0 80 24"><path d="M4 18 C 20 18, 50 18, 72 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M72 6 L64 4 M72 6 L69 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </div>
   </div>
 
@@ -189,7 +189,12 @@
   dirLight.shadow.mapSize.set(1024, 1024);
   dirLight.shadow.camera.near = 0.5;
   dirLight.shadow.camera.far = 10;
+  dirLight.shadow.camera.left = -2;
+  dirLight.shadow.camera.right = 2;
+  dirLight.shadow.camera.top = 2;
+  dirLight.shadow.camera.bottom = -2;
   dirLight.shadow.bias = -0.001;
+  dirLight.shadow.radius = 2.5; // sombra suave/delicada en los bordes, sin ser difusa en exceso
   scene.add(dirLight);
   const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
   fillLight.position.set(-3, 1, -2); // lateral pero sin componente negativo en Y, solo para definir volumen — no emite sombra (castShadow no activado)
@@ -377,7 +382,7 @@
       // que la pieza está apoyada sobre una superficie en vez de flotar en el aire.
       const groundY = modelBoxForHotspots.min.y;
       const groundGeo = new THREE.PlaneGeometry(8, 8);
-      const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+      const groundMat = new THREE.ShadowMaterial({ opacity: 0.55, color: 0x000000 });
       const ground = new THREE.Mesh(groundGeo, groundMat);
       ground.rotation.x = -Math.PI / 2;
       ground.position.y = groundY;
@@ -468,7 +473,7 @@
     const ringGroup = new THREE.Group();
 
     const ringGeo = new THREE.RingGeometry(ringRadius - 0.01, ringRadius + 0.01, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x9C7A3C, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.rotation.x = -Math.PI / 2;
     ringGroup.add(ring);
@@ -478,7 +483,7 @@
     [0, Math.PI].forEach((angle) => {
       const arrow = new THREE.Mesh(
         new THREE.ConeGeometry(0.07, 0.16, 12),
-        new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.5 })
+        new THREE.MeshBasicMaterial({ color: 0x9C7A3C, transparent: true, opacity: 0.5 })
       );
       arrow.position.set(Math.sin(angle) * ringRadius, 0, Math.cos(angle) * ringRadius);
       arrow.rotation.x = Math.PI / 2;
@@ -582,11 +587,13 @@
       const clampedX = Math.max(SCREEN_CLAMP_MARGIN, Math.min(w - SCREEN_CLAMP_MARGIN, numberScreen.x));
       const clampedY = Math.max(SCREEN_CLAMP_MARGIN, Math.min(hgt - SCREEN_CLAMP_MARGIN, numberScreen.y));
 
+      // El número SIEMPRE se muestra, incluso detrás del modelo — solo se oculta
+      // si queda literalmente detrás de la cámara (caso raro, rotación extrema).
+      // Esto asegura que el usuario nunca "pierda de vista" un hotspot.
+      els.number.style.display = numberScreen.behindCamera ? 'none' : 'flex';
       els.number.style.left = `${clampedX}px`;
       els.number.style.top = `${clampedY}px`;
 
-      // Función auxiliar: ¿este punto del mundo está oculto detrás de la geometría
-      // real del modelo, visto desde la cámara actual?
       function isOccludedByModel(worldPoint) {
         const direction = worldPoint.clone().sub(camera.position).normalize();
         occlusionRaycaster.set(camera.position, direction);
@@ -597,29 +604,45 @@
       }
 
       const anchorOccluded = anchorScreen.behindCamera || isOccludedByModel(worldAnchor);
-      const numberOccluded = numberScreen.behindCamera || isOccludedByModel(worldNumber);
 
-      // El número se oculta SOLO cuando él mismo queda tapado por la geometría
-      // (no por el anclaje). La línea y el punto de anclaje se muestran mientras
-      // el número sea visible, aunque el anclaje en la superficie ya esté oculto —
-      // así la línea se ve "hasta el final", como se pidió, en vez de cortarse
-      // apenas el punto de origen entra detrás de la pieza.
-      if (numberOccluded) {
-        els.number.style.display = 'none';
+      if (anchorOccluded) {
+        // El punto de anclaje en superficie ya no es visible: ocultamos el punto
+        // esférico, pero la línea puede seguir parcialmente visible si el tramo
+        // cerca del número todavía no entra en oclusión (ver muestreo abajo).
         els.anchor.style.display = 'none';
+      } else {
+        els.anchor.style.display = 'block';
+        els.anchor.style.left = `${anchorScreen.x}px`;
+        els.anchor.style.top = `${anchorScreen.y}px`;
+      }
+
+      // Recortamos la línea en el punto REAL donde empieza a estar oculta, en vez
+      // de mostrarla u ocultarla entera. Muestreamos el segmento 3D (anchor → número)
+      // en pasos pequeños, buscando desde el extremo del número hacia el anclaje
+      // el primer tramo que deja de estar ocluido — ese es el punto de corte visible.
+      const SAMPLES = 14;
+      let visibleFromT = 0; // t=0 es el anchor, t=1 es el número
+      for (let i = 0; i <= SAMPLES; i++) {
+        const t = i / SAMPLES;
+        const samplePoint = worldAnchor.clone().lerp(worldNumber, t);
+        if (!isOccludedByModel(samplePoint)) {
+          visibleFromT = t;
+          break;
+        }
+      }
+
+      if (visibleFromT >= 1) {
+        // Ni siquiera el tramo pegado al número es visible: ocultamos la línea entera.
         els.line.style.display = 'none';
       } else {
-        els.number.style.display = 'flex';
-        els.anchor.style.display = anchorOccluded ? 'none' : 'block';
         els.line.style.display = 'block';
-
-        if (!anchorOccluded) {
-          els.anchor.style.left = `${anchorScreen.x}px`;
-          els.anchor.style.top = `${anchorScreen.y}px`;
-        }
-
-        els.line.setAttribute('x1', anchorScreen.x);
-        els.line.setAttribute('y1', anchorScreen.y);
+        const cutScreenX = anchorScreen.x + (clampedX - anchorScreen.x) * visibleFromT;
+        const cutScreenY = anchorScreen.y + (clampedY - anchorScreen.y) * visibleFromT;
+        // La línea visible va desde el punto de corte (cutScreen) hasta el número —
+        // es decir, se "come" desde el lado del anclaje, dejando siempre el tramo
+        // pegado al número intacto, que es la parte que más ayuda a ubicarlo.
+        els.line.setAttribute('x1', cutScreenX);
+        els.line.setAttribute('y1', cutScreenY);
         els.line.setAttribute('x2', clampedX);
         els.line.setAttribute('y2', clampedY);
       }
