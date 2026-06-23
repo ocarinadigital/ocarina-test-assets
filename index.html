@@ -117,17 +117,17 @@
   .description{ font-size:2.8vw; line-height:1.4; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
 
   .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:50vh; flex-shrink:0; overflow:hidden; }
-  #viewer3d{ width:100%; height:85%; position:absolute; top:0; left:0; }
+  #viewer3d{ width:100%; height:85%; position:absolute; top:0; left:0; z-index:2; }
   .fake-shadow{
     position:absolute;
-    bottom:14%;
+    bottom:8%;
     left:50%;
     transform:translateX(-50%);
-    width:60%;
-    max-width:240px;
-    height:9%;
-    max-height:32px;
-    background:radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0) 80%);
+    width:62%;
+    max-width:250px;
+    height:8%;
+    max-height:30px;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0) 80%);
     z-index:1;
     pointer-events:none;
   }
@@ -245,12 +245,15 @@
   </div>
 
   <div class="viewer-wrap">
+    <!-- Sombra falsa: un gradiente radial negro estático, no una simulación física
+         de luz (shadow map). Vive ANTES de #viewer3d en el DOM (mismo contenedor
+         que el anillo, .viewer-wrap), con el mismo "bottom", para que ambos coincidan
+         exactamente en el plano del piso. Al estar antes en el DOM, el canvas 3D
+         (con fondo transparente) se pinta ENCIMA de ella, dejando el modelo
+         visualmente por delante de su propia sombra, como corresponde. -->
+    <div class="fake-shadow"></div>
+
     <div id="viewer3d">
-      <!-- Sombra falsa: un gradiente radial negro estático, no una simulación física
-           de luz (shadow map). Da la sensación de "objeto apoyado en una superficie"
-           a costo prácticamente nulo de cómputo, ya que es un solo div con CSS,
-           no algo que el motor 3D tenga que recalcular en cada frame. -->
-      <div class="fake-shadow"></div>
       <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
 
     </div>
@@ -748,7 +751,11 @@
       // visible al 100% cuando mira de frente, ~25% cuando está del otro lado.
       // Esto da la sensación de "está ahí pero del otro lado" sin el costo de
       // calcular oclusión geométrica real, y sin el "parpadeo" de mostrar/ocultar.
-      const opacity = numberScreen.behindCamera ? 0 : Math.max(0.25, (facingDot + 1) / 2);
+      // (facingDot+1)/2 da 0 cuando está de espaldas y 1 cuando está de frente.
+      // Aplicamos una potencia <1 para "empujar" los valores intermedios y altos
+      // más cerca de 1 (más opaco de frente), sin subir el piso mínimo de atrás.
+      const facing01 = (facingDot + 1) / 2;
+      const opacity = numberScreen.behindCamera ? 0 : Math.max(0.25, Math.pow(facing01, 0.5));
       els.anchor.style.opacity = opacity;
       els.line.style.opacity = opacity * 0.8;
       els.number.style.opacity = Math.max(0.55, opacity); // el número se atenúa menos: siempre debe notarse
