@@ -1,885 +1,266 @@
 <!DOCTYPE html>
+<!--
+  INDEX.HTML — Escáner AR, Tipo 2 (Display AR), Ocarina Digital
+  Punto de entrada único de la experiencia: inicializa la cámara MindAR,
+  espera a detectar uno de los N trackers físicos, y redirige al D
+  correspondiente. NO se edita pieza por pieza: cada museo nuevo parte de
+  este archivo ajustando únicamente:
+    - assets/logo.png (logo del museo, mostrado en la pantalla de carga)
+    - El array DISPLAYS (cuántos trackers hay y a qué carpeta de D apunta cada uno)
+    - El texto de "carga-txt" si se quiere personalizar el mensaje de carga
+  La lógica de detección de cámara, el timing de la pantalla de carga, y el
+  comportamiento de "volver al escáner" desde un D NO se modifican caso por caso.
+-->
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MFB · Display AR (prueba 3D)</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{ --bg:#F7F3EC; --ink:#1C2333; --gold:#9C7A3C; --gold-soft:#C7AD7B; --card:#FFFFFF; }
-  *{ box-sizing:border-box; margin:0; padding:0; }
-  html, body{ height:100%; overflow:hidden; touch-action:manipulation; }
-  *{ touch-action:manipulation; }
-  body{ background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; }
-  .screen{ max-width:480px; margin:0 auto; height:100vh; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Display AR — Ocarina Digital</title>
 
-  header{ display:flex; align-items:flex-start; justify-content:space-between; padding:1.5vh 6vw 0 6vw; flex-shrink:0; }
-  .logo{ display:flex; align-items:center; gap:2.2vw; }
-  .logo-mark{ width:11vw; height:11vw; max-width:50px; max-height:50px; border:1px solid var(--ink); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-weight:600; font-size:5vw; }
-  .logo-text{ font-size:2.6vw; line-height:1.45; letter-spacing:0.1em; text-transform:uppercase; font-weight:500; }
-  .logo-text span{ display:block; }
-  .back-link{ text-align:right; color:var(--gold); font-size:2.5vw; line-height:1.3; cursor:pointer; }
-  .back-link .arrow{ font-size:4.5vw; margin:0 0 0.6vh auto; }
+  <!-- ===== LIBRERÍAS AR (no tocar) ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
-  .title-block{ padding:0.8vh 7vw 0 7vw; text-align:center; flex-shrink:0; }
-  .badge{
-    display:inline-flex;
-    align-items:center;
-    gap:1.2vw;
-    border:1px solid var(--gold-soft);
-    background:transparent;
-    color:var(--gold);
-    font-size:2.5vw;
-    font-family:'Inter', sans-serif;
-    font-weight:600;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    padding:0.5vh 3.5vw;
-    border-radius:100px;
-    margin-bottom:0.8vh;
-    cursor:pointer;
-  }
-  .badge-info-icon{
-    width:3.2vw;
-    height:3.2vw;
-    min-width:13px;
-    min-height:13px;
-    border-radius:50%;
-    border:1px solid var(--gold-soft);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:2.2vw;
-    font-style:italic;
-    font-weight:700;
-  }
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: sans-serif; }
 
-  .info-overlay{
-    display:none;
-    position:fixed;
-    inset:0;
-    background:rgba(28,27,25,0.45);
-    z-index:50;
-    align-items:center;
-    justify-content:center;
-    padding:8vw;
-  }
-  .info-overlay.open{ display:flex; }
-  .info-box{
-    position:relative;
-    background:var(--bg);
-    border:1px solid var(--gold-soft);
-    border-radius:18px;
-    padding:6vh 6vw 5vh 6vw;
-    max-width:380px;
-    width:100%;
-    box-shadow:0 12px 36px rgba(0,0,0,0.25);
-  }
-  .info-box-badge{
-    display:inline-block;
-    border:1px solid var(--gold-soft);
-    color:var(--gold);
-    font-size:2.6vw;
-    font-weight:600;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    padding:0.6vh 4vw;
-    border-radius:100px;
-    margin-bottom:2vh;
-  }
-  .hotspot-popup-title{
-    font-family:'Playfair Display',serif;
-    font-size:4.2vw;
-    font-weight:600;
-    color:var(--ink);
-    margin-bottom:1.5vh;
-  }
-  .hotspot-popup-image{
-    width:100%;
-    height:32vh;
-    object-fit:cover;
-    border-radius:10px;
-    margin-bottom:1.5vh;
-    display:block;
-  }
-  .hotspot-popup-image-placeholder{
-    width:100%;
-    height:32vh;
-    background:#E4E1DA;
-    border-radius:10px;
-    align-items:center;
-    justify-content:center;
-    color:#9B968C;
-    font-size:2.8vw;
-    margin-bottom:1.5vh;
-  }
-  .info-box p{
-    font-size:3.4vw;
-    line-height:1.55;
-    color:var(--ink);
-  }
-  .info-close{
-    position:absolute;
-    top:14px;
-    right:14px;
-    width:7vw;
-    height:7vw;
-    max-width:30px;
-    max-height:30px;
-    border-radius:50%;
-    border:1px solid var(--gold-soft);
-    background:transparent;
-    color:var(--gold);
-    font-size:4vw;
-    line-height:1;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  h1{ font-family:'Playfair Display',serif; font-weight:500; font-size:6.8vw; line-height:1.05; margin-bottom:0.6vh; }
-  .rule{ width:36px; height:1px; background:var(--gold-soft); margin:0 auto 0.6vh auto; }
-  .subtitle{ font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:0.8vh; }
-  .description{ font-size:2.8vw; line-height:1.4; color:rgba(28,27,25,0.75); max-width:90%; margin:0 auto; }
+    /* Pantalla de carga mientras inicializa la cámara. Paleta neutra por
+       defecto (blanco/gris/dorado neutro) — si el museo pide un tinte de
+       marca acá, se pisa #FFFFFF y #8A8A8A de abajo, nada más. */
+    #pantalla-carga {
+      position: fixed; inset: 0; background: #FFFFFF;
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+      z-index: 999; overflow: hidden;
+    }
+    #pantalla-carga .corner { position:absolute; width:28px; height:28px; border-color:#8A8A8A; opacity:0.5; animation: breathe 2.8s ease-in-out infinite; }
+    #pantalla-carga .corner.tl { top:32px; left:24px; border-top:2.5px solid; border-left:2.5px solid; }
+    #pantalla-carga .corner.tr { top:32px; right:24px; border-top:2.5px solid; border-right:2.5px solid; }
+    #pantalla-carga .corner.bl { bottom:32px; left:24px; border-bottom:2.5px solid; border-left:2.5px solid; }
+    #pantalla-carga .corner.br { bottom:32px; right:24px; border-bottom:2.5px solid; border-right:2.5px solid; }
+    #pantalla-carga .corner.tr, #pantalla-carga .corner.bl { animation-delay: 0.4s; }
+    #pantalla-carga .corner.br { animation-delay: 0.8s; }
+    @keyframes breathe { 0%,100%{opacity:0.25; transform:scale(1);} 50%{opacity:0.65; transform:scale(1.08);} }
+    #pantalla-carga .carga-center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; z-index:1; }
+    #pantalla-carga .logo-carga { width: 240px; max-width: 70vw; height: auto; }
+    #pantalla-carga .carga-txt { font-family:'Inter',sans-serif; font-size:15px; color:#1A1A1A; text-align:center; margin:0; }
+    #pantalla-carga .barra-wrap { width:60%; max-width:280px; padding-bottom:60px; z-index:1; }
+    #pantalla-carga .barra-track { width:100%; height:4px; background:#E3E3E3; border-radius:4px; overflow:hidden; }
+    #pantalla-carga .barra-fill { width:30%; height:100%; background:#8A8A8A; border-radius:4px; animation: cargar 2.2s ease-in-out infinite; }
+    @keyframes cargar { 0%{width:5%; margin-left:0%;} 50%{width:55%; margin-left:20%;} 100%{width:5%; margin-left:95%;} }
 
-  .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:50vh; flex-shrink:0; overflow:hidden; }
-  #viewer3d{ width:100%; height:85%; position:absolute; top:0; left:0; z-index:2; }
-  #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
-
-  .loading-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#999; text-align:center; padding:0 10vw; }
-  .error-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
-
-  .hotspot-anchor{ position:absolute; width:1.6vw; height:1.6vw; max-width:8px; max-height:8px; border-radius:50%; background:var(--gold-soft); pointer-events:none; transform:translate(-50%,-50%); }
-  .hotspot-number{ position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:#1C2333; border:1.4px solid var(--gold); color:#E8C77A; display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:700; cursor:pointer; transform:translate(-50%,-50%); box-shadow:0 2px 6px rgba(0,0,0,0.25); }
-  .hotspot-number::after{
-    content:'';
-    position:absolute;
-    inset:0;
-    border-radius:50%;
-    border:1.4px solid var(--gold-soft);
-    animation: hotspotBreathe 2.4s ease-in-out infinite;
-  }
-  @keyframes hotspotBreathe{
-    0%, 100% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.55); opacity: 0; }
-  }
-  #hotspots3d{ position:absolute; inset:0; pointer-events:none; z-index:5; }
-  #hotspots3d .hotspot-number{ pointer-events:auto; }
-
-  .shadow-plane{
-    position:absolute;
-    bottom:8%;
-    left:50%;
-    transform:translateX(-50%);
-    width:96%;
-    max-width:420px;
-    height:auto;
-    z-index:1;
-    pointer-events:none;
-  }
-  .rotate-arc-ring{
-    position:absolute;
-    bottom:8%;
-    left:50%;
-    transform:translateX(-50%);
-    width:96%;
-    max-width:420px;
-    height:auto;
-    color:var(--gold);
-    z-index:3;
-    pointer-events:none;
-  }
-  .rotate-hint-text{
-    position:absolute;
-    bottom:6%;
-    left:50%;
-    transform:translateX(-50%);
-    display:flex;
-    align-items:center;
-    gap:1.8vw;
-    color:var(--gold);
-    font-size:2.6vw;
-    white-space:nowrap;
-    z-index:4;
-  }
-  .hand-icon-wrap{
-    width:7vw;
-    max-width:30px;
-    height:7vw;
-    max-height:30px;
-    flex-shrink:0;
-    background-color:var(--gold);
-    opacity:0.85;
-    -webkit-mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png');
-    mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png');
-    -webkit-mask-size:contain;
-    mask-size:contain;
-    -webkit-mask-repeat:no-repeat;
-    mask-repeat:no-repeat;
-    -webkit-mask-position:center;
-    mask-position:center;
-  }
-
-  .cta-detail{ margin:0 6vw 1.2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; }
-  .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
-  .cta-title{ font-size:3.3vw; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--gold); margin-bottom:0.4vh; }
-  .cta-sub{ font-size:3.3vw; }
-  .cta-arrow{ color:var(--gold-soft); font-size:4.5vw; flex-shrink:0; }
-</style>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+    /* Instrucción flotante sobre la cámara */
+    #instruccion {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.65);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 15px;
+      z-index: 10;
+      text-align: center;
+      display: none; /* Se muestra cuando la cámara esté lista */
+      backdrop-filter: blur(4px);
+    }
+  </style>
 </head>
 <body>
 
-<div class="screen">
-
-  <header>
-    <div class="logo">
-      <div class="logo-mark">M</div>
-      <div class="logo-text">
-        <span>Museo</span><span>Fernández</span><span>Blanco</span>
-      </div>
+  <!-- Pantalla de carga -->
+  <div id="pantalla-carga">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="carga-center">
+      <!-- ÚNICO elemento que cambia por museo: el logo. Reemplazar
+           assets/logo.png por el del cliente — mismo archivo que ya
+           usan los D y las pantallas de Detalle. -->
+      <img class="logo-carga" src="assets/logo.png" alt="Logo del museo">
+      <p class="carga-txt">Cargando experiencia...</p>
     </div>
-    <div class="back-link">
-      <div class="arrow">&#8592;</div>
-      volver al<br>escáner
-    </div>
-  </header>
-
-  <div class="title-block">
-    <button class="badge" id="badgeBtn" type="button">Pieza complementaria <span class="badge-info-icon">i</span></button>
-    <h1>Mate de plata cincelada</h1>
-    <div class="rule"></div>
-    <div class="subtitle">Siglo XVIII – Virreinato del Río de la Plata</div>
+    <div class="barra-wrap"><div class="barra-track"><div class="barra-fill"></div></div></div>
   </div>
 
-  <!-- Info box del badge: oculto por defecto, aparece al tocar "Pieza complementaria". -->
-  <div class="info-overlay" id="infoOverlay">
-    <div class="info-box">
-      <button class="info-close" id="infoClose" type="button">&times;</button>
-      <div class="info-box-badge">Pieza complementaria</div>
-      <p>Una pieza que no forma parte de la exhibición actual, pero complementa la historia de la época.</p>
-    </div>
-  </div>
+  <!-- Instrucción visible mientras busca el tracker -->
+  <div id="instruccion">Apuntá la cámara a uno de los displays</div>
 
-  <!-- Popups de hotspots: uno por cada punto numerado del visor 3D. Cada uno con
-       título, imagen (el cliente sube el asset real a assets/ y reemplaza el src)
-       y texto descriptivo. -->
-  <div class="info-overlay" id="hotspot1Overlay">
-    <div class="info-box">
-      <button class="info-close" data-close-hotspot type="button">&times;</button>
-      <div class="hotspot-popup-title">Hotspot 1 — Título</div>
-      <img class="hotspot-popup-image" src="assets/hotspot-1.jpg" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-      <div class="hotspot-popup-image-placeholder" style="display:none;">[ imagen — hotspot-1 ]</div>
-      <p>Descripción del punto de interés 1.</p>
-    </div>
-  </div>
+  <!-- ============================================================
+       ESCENA AR
+       
+       imageTargetSrc: apunta al archivo .mind con los N trackers de
+       los D de este museo. Compilarlo subiendo todas las imágenes de
+       los markers físicos en el ORDEN correcto (ver más abajo, DISPLAYS).
+  ============================================================ -->
+  <a-scene
+    mindar-image="imageTargetSrc: targets/targets.mind; autoStart: true; filterMinCF: 0.001; filterBeta: 0.01;"
+    color-space="sRGB"
+    renderer="colorManagement: true;"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    id="escena-ar">
 
-  <div class="info-overlay" id="hotspot2Overlay">
-    <div class="info-box">
-      <button class="info-close" data-close-hotspot type="button">&times;</button>
-      <div class="hotspot-popup-title">Hotspot 2 — Título</div>
-      <img class="hotspot-popup-image" src="assets/hotspot-2.jpg" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-      <div class="hotspot-popup-image-placeholder" style="display:none;">[ imagen — hotspot-2 ]</div>
-      <p>Descripción del punto de interés 2.</p>
-    </div>
-  </div>
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <div class="info-overlay" id="hotspot3Overlay">
-    <div class="info-box">
-      <button class="info-close" data-close-hotspot type="button">&times;</button>
-      <div class="hotspot-popup-title">Hotspot 3 — Título</div>
-      <img class="hotspot-popup-image" src="assets/hotspot-3.jpg" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-      <div class="hotspot-popup-image-placeholder" style="display:none;">[ imagen — hotspot-3 ]</div>
-      <p>Descripción del punto de interés 3.</p>
-    </div>
-  </div>
+    <!-- ===== TARGETS =====
+         Se generan dinámicamente desde el array DISPLAYS más abajo —
+         no hace falta agregar/quitar <a-entity> a mano: la cantidad de
+         trackers la define la longitud de ese array. Ver bloque de script.
+    ===== -->
+    <a-entity id="targets-container"></a-entity>
 
-  <div class="viewer-wrap">
-    <div id="viewer3d">
-      <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
+  </a-scene>
 
-    </div>
+  <script>
+    // ===================================================
+    // CONFIGURACIÓN — ÚNICO BLOQUE A EDITAR POR MUSEO (junto con el logo)
+    // ---------------------------------------------------
+    // Un ítem por tracker físico. El índice de la lista es el targetIndex
+    // (debe coincidir con el ORDEN en que se subieron las imágenes al
+    // compilador de MindAR al generar targets.mind).
+    // "url" es la carpeta del D correspondiente — cada una debe tener su
+    // propio index.html (el D) adentro.
+    // ===================================================
+    const DISPLAYS = [
+      'displays/pieza-1/',   // tracker 0
+      'displays/pieza-2/',   // tracker 1
+      'displays/pieza-3/',   // tracker 2
+      // agregar una línea por cada D nuevo, en el mismo orden que las
+      // imágenes subidas al compilador de targets.mind
+    ];
 
-    <!-- Sombra y anillo viven en DOS SVG separados, pero con el MISMO viewBox
-         ("0 0 300 130") y las MISMAS coordenadas numéricas (centro real del
-         círculo en 150,71). Esto garantiza que comparten exactamente el mismo
-         origen por construcción matemática, sin depender de calcular "bottom%"
-         por separado en cada uno. Se separan en dos SVG (no uno) únicamente
-         para poder darles z-index distintos: la sombra debe quedar DEBAJO del
-         modelo 3D, el anillo ENCIMA — si fueran el mismo SVG, comparten z-index
-         y no se puede intercalar el canvas entre ambos. -->
-
-    <!-- SVG 1: sombra, z-index bajo (ver CSS .shadow-plane), debajo del canvas. -->
-    <svg class="shadow-plane" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <radialGradient id="shadowGradient" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#000000" stop-opacity="1"/>
-          <stop offset="65%" stop-color="#000000" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <ellipse cx="150" cy="71" rx="145" ry="27.6" fill="url(#shadowGradient)"/>
-    </svg>
-
-    <!-- SVG 2: anillo, z-index alto, encima del canvas. Mismo viewBox/coordenadas
-         que el SVG de la sombra, por eso ambos quedan centrados en el mismo punto. -->
-    <svg class="rotate-arc-ring" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <marker id="ringArrowStart" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
-        </marker>
-        <marker id="ringArrowEnd" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
-        </marker>
-      </defs>
-      <path d="M 64.4 54.7 A 121 23.1 0 0 0 29 71 A 121 23.1 0 0 0 150 94.1 A 121 23.1 0 0 0 271 71 A 121 23.1 0 0 0 235.6 54.7"
-            fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65"
-            marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
-    </svg>
-
-      <!-- Texto + ícono de mano (imagen real provista por el cliente), debajo del anillo. -->
-      <div class="rotate-hint-text">
-        <div class="hand-icon-wrap"></div>
-        <span>Desliza para rotar</span>
-      </div>
-
-    <!-- Los hotspots ya no se posicionan a mano en HTML/CSS: se generan dinámicamente
-         desde JS, anclados a coordenadas 3D reales del modelo (ver HOTSPOTS_3D abajo),
-         y se reproyectan a 2D en cada frame para que viajen con la rotación y el zoom. -->
-    <div id="hotspots3d"></div>
-  </div>
-
-  <button class="cta-detail">
-    <div class="cta-icon">&#128214;</div>
-    <div style="flex:1;">
-      <div class="cta-title">Detalle de la pieza</div>
-      <div class="cta-sub">Historia, origen y uso</div>
-    </div>
-    <div class="cta-arrow">&#8250;</div>
-  </button>
-
-</div>
-
-<script>
-  // Bloqueo adicional de zoom vía JS: la meta tag de viewport y touch-action CSS
-  // a veces no son suficientes en navegadores modernos (iOS 10+/Chrome 61+ ignoran
-  // parcialmente user-scalable=no por accesibilidad). Esto cubre el caso de gestos
-  // de pellizco con 2+ dedos en cualquier parte de la página.
-  document.addEventListener('touchmove', (e) => {
-    if (e.touches.length > 1) e.preventDefault();
-  }, { passive: false });
-
-  // Bloqueo de doble-tap-para-zoom: si dos toques ocurren muy cerca en el tiempo,
-  // se previene el comportamiento default del segundo.
-  let lastTouchEnd = 0;
-  document.addEventListener('touchend', (e) => {
-    const now = Date.now();
-    if (now - lastTouchEnd <= 300) e.preventDefault();
-    lastTouchEnd = now;
-  }, { passive: false });
-</script>
-
-<script>
-  // Captura cualquier error de JS (incluyendo errores de carga de módulos ES,
-  // que en Safari móvil pueden fallar silenciosamente sin pasar por los catch normales)
-  // y lo muestra en pantalla, ya que no podemos abrir la consola del navegador fácil en un celular.
-  window.addEventListener('error', (e) => {
-    const el = document.getElementById('loadingMsg');
-    if (el) {
-      el.className = 'error-msg';
-      el.innerHTML = 'Error JS: ' + (e.message || 'desconocido') + '<br><span style="font-size:0.75em;opacity:0.7;">' + (e.filename || '') + ':' + (e.lineno || '') + '</span>';
-    }
-  });
-  window.addEventListener('unhandledrejection', (e) => {
-    const el = document.getElementById('loadingMsg');
-    if (el) {
-      el.className = 'error-msg';
-      el.innerHTML = 'Promesa rechazada: ' + (e.reason?.message || e.reason || 'desconocido');
-    }
-  });
-
-  // Badge "Pieza complementaria" → abre/cierra el info box con la descripción,
-  // que se sacó de la pantalla principal para mantenerla más limpia.
-  const badgeBtn = document.getElementById('badgeBtn');
-  const infoOverlay = document.getElementById('infoOverlay');
-  const infoClose = document.getElementById('infoClose');
-
-  badgeBtn?.addEventListener('click', () => infoOverlay.classList.add('open'));
-  infoClose?.addEventListener('click', () => infoOverlay.classList.remove('open'));
-  infoOverlay?.addEventListener('click', (e) => {
-    if (e.target === infoOverlay) infoOverlay.classList.remove('open'); // cerrar tocando fuera de la caja
-  });
-
-  // Popups de hotspots: mismo patrón de cierre (botón X o tocar afuera de la caja),
-  // aplicado de forma genérica a los 3 overlays sin repetir código por cada uno.
-  document.querySelectorAll('.info-overlay[id^="hotspot"]').forEach((overlay) => {
-    overlay.querySelector('[data-close-hotspot]')?.addEventListener('click', () => overlay.classList.remove('open'));
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.classList.remove('open');
+    // Genera un <a-entity mindar-image-target> por cada D definido arriba,
+    // así no hace falta tocar el HTML de la escena al agregar/quitar piezas.
+    const targetsContainer = document.querySelector('#targets-container');
+    DISPLAYS.forEach((_, index) => {
+      const entity = document.createElement('a-entity');
+      entity.setAttribute('mindar-image-target', `targetIndex: ${index}`);
+      entity.setAttribute('id', `target-${index}`);
+      const plane = document.createElement('a-plane');
+      plane.setAttribute('visible', 'false');
+      plane.setAttribute('position', '0 0 0');
+      plane.setAttribute('width', '1');
+      plane.setAttribute('height', '1');
+      entity.appendChild(plane);
+      targetsContainer.appendChild(entity);
     });
-  });
-</script>
 
-<script type="module">
-  import * as THREE from 'three';
-  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    // ===================================================
+    // DETECCIÓN: ¿LLEGAMOS ACÁ DESDE EL QR INICIAL O DESDE
+    // EL BOTÓN "VOLVER AL ESCÁNER" DE UN D?
+    // ---------------------------------------------------
+    // Cada D es una página HTML separada. Al apretar "volver al escáner"
+    // se navega de vuelta a este index.html con ?volver=1 en la URL.
+    // Si detectamos ese parámetro, NO mostramos la pantalla de carga con
+    // branding (el usuario ya vio esa intro una vez al escanear el QR
+    // inicial; mostrarla de nuevo da la sensación incorrecta de que "hay
+    // que recargar toda la experiencia" cada vez que vuelve del D).
+    // ===================================================
+    const vieneDeUnDisplay = new URLSearchParams(window.location.search).get('volver') === '1';
 
-  document.getElementById('loadingMsg').textContent = 'Módulos cargados. Iniciando escena 3D…';
-
-  // URL del modelo 3D real, servido directamente desde GitHub raw (sin pasar por jsDelivr,
-  // que puede tardar o fallar en su primera petición a un repo recién creado).
-  const MODEL_URL = 'https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/silver_offering_bowl_c._1880_ce.glb';
-
-  const mount = document.getElementById('viewer3d');
-  const loadingMsg = document.getElementById('loadingMsg');
-
-  const w = mount.clientWidth;
-  const h = mount.clientHeight;
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
-  camera.position.set(0, 0, 4);
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(w, h);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  mount.appendChild(renderer.domElement);
-
-  scene.add(new THREE.AmbientLight(0xffffff, 1.6));
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
-  dirLight.position.set(3, 5, 4); // ángulo normal de 3/4 — ya no necesita ser cenital, no hay sombra que cuidar
-  scene.add(dirLight);
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.9);
-  fillLight.position.set(-3, 1, -2);
-  scene.add(fillLight);
-
-  // Environment map generado por código (sin imagen externa): metales con metalness
-  // alto necesitan algo que reflejar, o se ven planos/oscuros sin importar las luces.
-  // RoomEnvironment da un entorno neutro tipo "habitación" que sirve para esto.
-  const pmremGenerator = new THREE.PMREMGenerator(renderer);
-  const envScene = new THREE.Scene();
-  envScene.background = new THREE.Color(0xf0f0f0);
-  const envLight1 = new THREE.PointLight(0xffffff, 800, 20);
-  envLight1.position.set(5, 5, 5);
-  envScene.add(envLight1);
-  const envLight2 = new THREE.PointLight(0xffffff, 400, 20);
-  envLight2.position.set(-5, 3, -5);
-  envScene.add(envLight2);
-  const envTexture = pmremGenerator.fromScene(envScene, 0.04).texture;
-  scene.environment = envTexture;
-  pmremGenerator.dispose();
-
-  const modelGroup = new THREE.Group();
-  scene.add(modelGroup);
-
-  const loader = new GLTFLoader();
-  let loadResolved = false;
-
-  const timeoutId = setTimeout(() => {
-    if (!loadResolved) {
-      loadingMsg.className = 'error-msg';
-      loadingMsg.innerHTML = 'El modelo está demorando demasiado o no responde.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>';
-    }
-  }, 15000);
-
-  // GLTFLoader (a partir de cierta versión de three.js) dejó de soportar la extensión
-  // KHR_materials_pbrSpecularGlossiness: carga la geometría perfecto, pero ignora la
-  // textura difusa de ese material (se ve gris plano). Esta función la aplica a mano,
-  // leyendo el JSON crudo del GLTF que el parser ya descargó y decodificó.
-  async function applySpecGlossTextureManually(gltf) {
-    const json = gltf.parser.json;
-    if (!json.extensionsUsed || !json.extensionsUsed.includes('KHR_materials_pbrSpecularGlossiness')) {
-      return; // El modelo no usa esta extensión, no hay nada que parchear.
+    if (vieneDeUnDisplay) {
+      // Ocultamos la pantalla de carga de inmediato, sin esperar
+      // ningún mínimo de tiempo ni evento de cámara.
+      document.getElementById('pantalla-carga').style.display = 'none';
+      document.getElementById('instruccion').style.display = 'block';
     }
 
-    for (let matIndex = 0; matIndex < (json.materials || []).length; matIndex++) {
-      const matDef = json.materials[matIndex];
-      const specGloss = matDef.extensions && matDef.extensions.KHR_materials_pbrSpecularGlossiness;
-      if (!specGloss || specGloss.diffuseTexture == null) continue;
+    // ===================================================
+    // OCULTAR PANTALLA DE CARGA (primer escaneo del QR)
+    // ---------------------------------------------------
+    // El evento 'loaded' de la escena AR se dispara cuando la LIBRERÍA
+    // terminó de inicializarse, pero NO significa que la cámara ya esté
+    // efectivamente mostrándose en pantalla todavía (falta el permiso del
+    // navegador + encendido real del sensor). Si ocultamos nuestra pantalla
+    // en ese momento, queda un hueco donde se ve la rueda de carga nativa
+    // de la librería AR.
+    //
+    // Por eso esperamos al evento 'loadeddata' del <video> interno que
+    // MindAR inyecta en el DOM, que SÍ indica que el primer frame de
+    // cámara ya está listo para mostrarse. Como red de seguridad,
+    // agregamos un timeout máximo por si ese evento no llegara a
+    // disparar en algún dispositivo.
+    //
+    // Además, garantizamos un tiempo MÍNIMO de exhibición (branding) para
+    // que la animación de carga no se sienta entrecortada en conexiones
+    // rápidas. Si la cámara está lista antes de ese mínimo, esperamos a
+    // que se cumpla; si tarda más, no se le suma nada extra — se oculta
+    // en cuanto esté realmente lista. Todo este bloque se omite si
+    // vieneDeUnDisplay es true, porque ya ocultamos la pantalla arriba.
+    // ===================================================
+    const TIEMPO_MINIMO_CARGA = 3000; // ms
+    const inicioCarga = Date.now();
+    let camaraLista = vieneDeUnDisplay; // si ya ocultamos, no hace falta procesar más
 
-      // parser.getDependency('texture', index) descarga y decodifica la textura
-      // referenciada, devolviendo un THREE.Texture ya listo para usar.
-      const diffuseTex = await gltf.parser.getDependency('texture', specGloss.diffuseTexture.index);
-      diffuseTex.colorSpace = THREE.SRGBColorSpace;
-
-      // Aplicamos esta textura a todos los meshes que usan este material por índice.
-      gltf.scene.traverse((node) => {
-        if (node.isMesh && node.material) {
-          const materials = Array.isArray(node.material) ? node.material : [node.material];
-          materials.forEach((mat) => {
-            // GLTFLoader nombra los materiales según el glTF original, así que
-            // comparamos por nombre (más confiable acá que por índice interno de three.js).
-            if (mat.name === matDef.name) {
-              mat.map = diffuseTex;
-              mat.color.set(0xffffff); // blanco para no tintar la textura
-              // GLTFLoader, al no entender esta extensión, deja metalness/roughness
-              // en valores por defecto que oscurecen la textura real. Los normalizamos
-              // a algo razonable para una pieza de metal con textura/grabado real
-              // (no un metal espejado: la textura ya aporta el detalle visual).
-              // Valores para metal pulido/brillante (plata, oro). Para metal con
-              // pátina/desgaste (como la vasija de prueba anterior) usar metalness
-              // ~0.3 y roughness ~0.55 en su lugar — ver bitácora de materiales.
-              mat.metalness = 0.85;
-              mat.roughness = 0.25;
-              mat.needsUpdate = true;
-            }
-          });
-        }
-      });
+    function ocultarPantallaCarga() {
+      const carga = document.getElementById('pantalla-carga');
+      if (carga.dataset.oculta) return; // evita ejecutar dos veces
+      carga.dataset.oculta = '1';
+      carga.style.display = 'none';
+      document.getElementById('instruccion').style.display = 'block';
     }
-  }
 
-  // ---------- HOTSPOTS ANCLADOS EN 3D ----------
-  // Coordenadas en el espacio LOCAL del modelo, definidas como fracciones del
-  // tamaño del modelo (0 a 1 en cada eje) en vez de unidades absolutas — así
-  // funcionan igual sin importar la escala real de cada GLB que carguemos a futuro.
-  // x: 0 = izquierda, 1 = derecha. y: 0 = abajo, 1 = arriba. z: 0 = atrás, 1 = adelante.
-  // Cada hotspot se define por una dirección angular desde el centro del modelo
-  // (azimuth: ángulo horizontal en grados, 0=adelante, 90=derecha, etc.;
-  // heightFraction: 0=base del modelo, 1=tope del modelo) en vez de coordenadas
-  // de bounding box — esto permite anclar el punto a la SUPERFICIE REAL de la
-  // pieza vía raycasting, en vez de caer "en el aire" dentro de una caja rectangular
-  // que no sigue la forma curva del objeto.
-  const HOTSPOTS_3D = [
-    { id: 'hotspot-1', azimuthDeg: 35,  heightFraction: 0.95, label: 'Borde superior' },
-    { id: 'hotspot-2', azimuthDeg: 110, heightFraction: 0.45, label: 'Cuerpo central' },
-    { id: 'hotspot-3', azimuthDeg: 200, heightFraction: 0.1,  label: 'Base' },
-  ];
-
-  const hotspotContainer = document.getElementById('hotspots3d');
-  const hotspotElements = {}; // { numberEl, anchorEl, lineEl }
-  let modelBoxForHotspots = null; // se completa una vez que el modelo carga (ver loader.load abajo)
-  let modelCenterForHotspots = null;
-
-  // SVG compartido para todas las líneas de los hotspots — un solo elemento
-  // que cubre todo el viewer-wrap, con una línea por hotspot dentro.
-  const hotspotSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  hotspotSvg.setAttribute('style', 'position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;');
-  hotspotContainer.appendChild(hotspotSvg);
-
-  function createHotspotElements() {
-    HOTSPOTS_3D.forEach((h, idx) => {
-      // Línea recta del punto de anclaje al número.
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('stroke', 'var(--gold-soft)');
-      line.setAttribute('stroke-width', '1.5');
-      hotspotSvg.appendChild(line);
-
-      // Punto esférico en la superficie del modelo (mismo color que la línea).
-      const anchor = document.createElement('div');
-      anchor.className = 'hotspot-anchor';
-      hotspotContainer.appendChild(anchor);
-
-      // Círculo numerado al final de la línea — siempre visible, nunca se oculta.
-      const number = document.createElement('div');
-      number.className = 'hotspot-number';
-      number.textContent = String(idx + 1);
-      number.title = h.label;
-      number.addEventListener('click', () => {
-        const overlay = document.getElementById(`hotspot${idx + 1}Overlay`);
-        if (overlay) overlay.classList.add('open');
-      });
-      hotspotContainer.appendChild(number);
-
-      hotspotElements[h.id] = { line, anchor, number };
-    });
-  }
-  createHotspotElements();
-
-  loader.load(
-    MODEL_URL,
-    async (gltf) => {
-      loadResolved = true;
-      clearTimeout(timeoutId);
-      loadingMsg.remove();
-      const model = gltf.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-
-      // Calculamos la escala para que el modelo ocupe exactamente el 70% del ancho
-      // visible del visor a la distancia fija de la cámara (ya no hay zoom, así que
-      // esta distancia es constante). Usamos la fórmula del frustum de una cámara
-      // perspectiva: ancho visible a distancia d = 2 * d * tan(fov/2) * aspect.
-      const TARGET_WIDTH_FRACTION = 0.63; // 10% menos que 0.7, para dar más aire a los hotspots contra los bordes de pantalla
-      const cameraDistance = camera.position.z;
-      const vFov = (camera.fov * Math.PI) / 180;
-      const visibleHeightAtDistance = 2 * Math.tan(vFov / 2) * cameraDistance;
-      // Usamos el ASPECT RATIO ACTUAL DEL MOUNT en el momento de la carga para fijar
-      // el ancho visible — pero el tamaño del modelo en pantalla queda determinado por
-      // el ANCHO en píxeles del contenedor, que no cambia si solo ajustamos el alto del
-      // visor (height del CSS). Esto evita que recortar verticalmente el marco del visor
-      // afecte el tamaño visual del modelo.
-      const visibleWidthAtDistance = visibleHeightAtDistance * camera.aspect;
-
-      // Usamos el diámetro horizontal real del modelo (X, ya que es el eje que
-      // domina el "ancho" visual al rotar sobre Y) para calcular qué escala lo
-      // hace ocupar el 70% de ese ancho visible.
-      const horizontalExtent = Math.max(size.x, size.z); // cubre rotación en cualquier orientación
-      const scale = (visibleWidthAtDistance * TARGET_WIDTH_FRACTION) / horizontalExtent;
-
-      model.scale.setScalar(scale);
-      model.position.sub(center.multiplyScalar(scale));
-      // Bajamos el modelo un poco respecto al centro vertical del visor — se sentía
-      // "demasiado centrado", sin llegar a una vista cenital. El offset es proporcional
-      // al tamaño ya escalado del modelo, para que se comporte igual con cualquier pieza.
-      model.position.y -= size.y * scale * 0.18;
-      modelGroup.add(model);
-
-      // Recalculamos el bounding box ya con la escala y posición finales aplicadas,
-      // en el espacio local de modelGroup — este es el que usan los hotspots para
-      // ubicarse de forma relativa (fx/fy/fz de 0 a 1) sin importar la escala original del GLB.
-      modelBoxForHotspots = new THREE.Box3().setFromObject(model);
-      modelCenterForHotspots = modelBoxForHotspots.getCenter(new THREE.Vector3());
-      computeHotspotAnchors(model);
-      // El anillo y el hint de texto ahora viven juntos en un único SVG/HTML
-      // (.rotate-ring-group, ver markup), en vez de mezclar geometría 3D + HTML.
-
-      try {
-        await applySpecGlossTextureManually(gltf);
-      } catch (e) {
-        console.warn('No se pudo aplicar la textura manualmente:', e);
-      }
-    },
-    (progress) => {
-      if (progress.total) {
-        const pct = Math.round((progress.loaded / progress.total) * 100);
-        loadingMsg.textContent = `Cargando modelo 3D… ${pct}%`;
-      }
-    },
-    (err) => {
-      loadResolved = true;
-      clearTimeout(timeoutId);
-      console.error('Error cargando GLB:', err);
-      loadingMsg.className = 'error-msg';
-      loadingMsg.innerHTML = 'No se pudo cargar el modelo 3D.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>';
-    }
-  );
-
-  // Rotación por arrastre (mouse y táctil) — SOLO horizontal (eje Y). Se eliminó
-  // la rotación vertical a pedido: simplifica la interacción, reduce el costo de
-  // cálculo (un eje menos que recalcular en cada frame), y evita ver el modelo
-  // desde ángulos raros (por abajo/arriba) que no aportan a una pieza de museo.
-  let isDragging = false;
-  let prevX = 0;
-  let rotY = 0;
-
-  function onDown(x) { isDragging = true; prevX = x; }
-  function onMove(x) {
-    if (!isDragging) return;
-    const dx = x - prevX;
-    rotY += dx * 0.01;
-    modelGroup.rotation.y = rotY;
-    prevX = x;
-  }
-  function onUp() { isDragging = false; }
-
-  renderer.domElement.addEventListener('mousedown', (e) => onDown(e.clientX));
-  window.addEventListener('mousemove', (e) => onMove(e.clientX));
-  window.addEventListener('mouseup', onUp);
-
-  renderer.domElement.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) onDown(e.touches[0].clientX);
-  }, { passive: true });
-  renderer.domElement.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 1) onMove(e.touches[0].clientX);
-  }, { passive: true });
-  renderer.domElement.addEventListener('touchend', onUp);
-
-  // Zoom eliminado a propósito: el modelo ya ocupa un porcentaje fijo y considerable
-  // de la pantalla desde el principio (es el protagonista), así que no hace falta
-  // acercarlo más. Esto también evita el desplazamiento desprolijo de los hotspots
-  // hacia afuera que ocurría al hacer zoom, y reduce código/superficie de bugs.
-
-  // ---------- HOTSPOTS ANCLADOS EN 3D (declaración movida arriba, antes de loader.load,
-  // para que modelBoxForHotspots exista cuando el callback de carga la usa) ----------
-
-  // Proyecta cada hotspot de coordenadas 3D (relativas al modelo) a coordenadas
-  // 2D de pantalla, considerando la rotación y el zoom actuales de la cámara.
-  // Esto es lo que hace que "viajen con la pieza" en vez de quedar fijos en pantalla.
-
-  // Distancia (en unidades del modelo, ya normalizado a ~2.2 de tamaño máximo)
-  // que el número se aleja del punto de anclaje en la superficie. Suficiente
-  // para despegarse visualmente de la pieza sin alejarse demasiado.
-  const HOTSPOT_LINE_LENGTH = 0.55;
-
-  // Margen de seguridad en píxeles para que el número nunca quede pegado
-  // al borde exacto del visor — siempre dentro de la pantalla con este respiro.
-  const SCREEN_CLAMP_MARGIN = 18;
-
-  // Anillo decorativo sobre el "suelo" que sugiere visualmente la posibilidad de
-  // rotar el objeto (inspirado en la referencia: círculo tenue con flechas en los
-  // extremos). Vive en `scene` directamente (no en modelGroup) porque no debe rotar
-  // junto con la pieza — representa el plano de giro, no la pieza misma.
-  function projectToScreen(vec3) {
-    const halfW = mount.clientWidth / 2;
-    const halfH = mount.clientHeight / 2;
-    const p = vec3.clone().project(camera);
-    return {
-      x: p.x * halfW + halfW,
-      y: -p.y * halfH + halfH,
-      behindCamera: p.z > 1,
-    };
-  }
-
-  // Anclajes reales calculados UNA VEZ cuando el modelo carga (no en cada frame:
-  // la geometría local no cambia, solo rota — recalcular el raycast en cada frame
-  // sería trabajo innecesario). Se completan en computeHotspotAnchors(), llamada
-  // desde loader.load() después de centrar/escalar el modelo.
-  const hotspotAnchorsLocal = {}; // { id: THREE.Vector3 en espacio local de modelGroup }
-
-  // Anillo perimetral elíptico (geometría 3D real, no HTML) que sugiere visualmente
-  // la posibilidad de rotar el objeto. Vive en `scene` directamente (no en modelGroup),
-  // así que NO rota junto con la pieza — representa el plano fijo del "suelo".
-  // Se posiciona en la base real del modelo (groundY), una sola vez al cargar.
-  function computeHotspotAnchors(model) {
-    const anchorRaycaster = new THREE.Raycaster();
-    const box = new THREE.Box3().setFromObject(model);
-    const sphere = new THREE.Sphere();
-    box.getBoundingSphere(sphere);
-    // Radio de partida para el rayo: bien afuera del modelo, para garantizar
-    // que el rayo hacia el centro siempre atraviese la superficie real.
-    const rayOriginDistance = sphere.radius * 2.5;
-
-    HOTSPOTS_3D.forEach((h) => {
-      const azimuthRad = (h.azimuthDeg * Math.PI) / 180;
-      const y = sphere.center.y - sphere.radius + sphere.radius * 2 * h.heightFraction;
-
-      // Punto de partida del rayo: bien afuera del modelo, en la dirección angular
-      // indicada, a la altura deseada.
-      const origin = new THREE.Vector3(
-        sphere.center.x + Math.sin(azimuthRad) * rayOriginDistance,
-        y,
-        sphere.center.z + Math.cos(azimuthRad) * rayOriginDistance
-      );
-      // Importante: el rayo apunta al CENTRO GEOMÉTRICO REAL (sphere.center, sin fijar
-      // la altura Y), no a un punto horizontal a la misma altura del origen. Para formas
-      // anchas y poco altas (como un bowl/cuenco), un rayo puramente horizontal puede
-      // pasar por encima o por debajo de la geometría real sin tocarla nunca, especialmente
-      // cerca de la base o el borde superior. Apuntando al centro real, el rayo entra en
-      // ángulo y siempre cruza el volumen del objeto sin importar la altura relativa.
-      const direction = sphere.center.clone().sub(origin).normalize();
-
-      anchorRaycaster.set(origin, direction);
-      const intersects = anchorRaycaster.intersectObject(model, true);
-
-      if (intersects.length > 0) {
-        // Primer punto de impacto = superficie real exterior del modelo, en
-        // coordenadas LOCALES de modelGroup (donde vive el resto de la lógica).
-        hotspotAnchorsLocal[h.id] = model.parent.worldToLocal(intersects[0].point.clone());
+    function marcarCamaraLista() {
+      if (camaraLista) return;
+      camaraLista = true;
+      const transcurrido = Date.now() - inicioCarga;
+      const restante = TIEMPO_MINIMO_CARGA - transcurrido;
+      if (restante > 0) {
+        setTimeout(ocultarPantallaCarga, restante);
       } else {
-        // Fallback si el rayo no pega contra nada (geometría con huecos, etc.):
-        // usamos un punto en la superficie de la esfera envolvente, mejor que nada.
-        const fallback = sphere.center.clone().add(
-          new THREE.Vector3(Math.sin(azimuthRad), 0, Math.cos(azimuthRad)).multiplyScalar(sphere.radius)
-        );
-        fallback.y = y;
-        hotspotAnchorsLocal[h.id] = fallback;
+        ocultarPantallaCarga();
       }
-    });
-  }
-
-  function updateHotspotPositions() {
-    if (!modelCenterForHotspots) return;
-    const center = modelCenterForHotspots;
-
-    HOTSPOTS_3D.forEach((h) => {
-      const localAnchor = hotspotAnchorsLocal[h.id];
-      if (!localAnchor) return;
-
-      const outwardDir = localAnchor.clone().sub(center).normalize();
-      const localNumberPos = localAnchor.clone().add(outwardDir.multiplyScalar(HOTSPOT_LINE_LENGTH));
-
-      const worldAnchor = localAnchor.clone().applyEuler(modelGroup.rotation);
-      const worldNumber = localNumberPos.clone().applyEuler(modelGroup.rotation);
-      const worldOutward = outwardDir.clone().applyEuler(modelGroup.rotation);
-
-      const anchorScreen = projectToScreen(worldAnchor);
-      const numberScreen = projectToScreen(worldNumber);
-
-      const els = hotspotElements[h.id];
-      if (!els) return;
-
-      const w = mount.clientWidth;
-      const hgt = mount.clientHeight;
-      const clampedX = Math.max(SCREEN_CLAMP_MARGIN, Math.min(w - SCREEN_CLAMP_MARGIN, numberScreen.x));
-      const clampedY = Math.max(SCREEN_CLAMP_MARGIN, Math.min(hgt - SCREEN_CLAMP_MARGIN, numberScreen.y));
-
-      // El número SIEMPRE se muestra, incluso "detrás" del modelo — solo se oculta
-      // si queda literalmente detrás de la cámara (caso raro, rotación extrema).
-      els.number.style.display = numberScreen.behindCamera ? 'none' : 'flex';
-      els.number.style.left = `${clampedX}px`;
-      els.number.style.top = `${clampedY}px`;
-
-      // Estimación de "lado visible" SIN raycasting: comparamos la dirección hacia
-      // afuera del anclaje (worldOutward) con la dirección hacia la cámara. Si apuntan
-      // en sentidos parecidos (dot product positivo), el punto mira hacia el espectador;
-      // si apuntan en sentidos opuestos, está del lado de atrás. Esto es una sola resta
-      // y un producto escalar — miles de veces más barato que lanzar un rayo contra
-      // toda la malla, y para el propósito de "atenuar cuando está del otro lado" da
-      // un resultado visualmente indistinguible del raycasting real.
-      const toCameraDir = camera.position.clone().sub(worldAnchor).normalize();
-      const facingDot = worldOutward.dot(toCameraDir); // 1 = de frente, -1 = de espaldas
-
-      // En vez de ocultar abruptamente, atenuamos la opacidad de forma gradual:
-      // visible al 100% cuando mira de frente, ~25% cuando está del otro lado.
-      // Esto da la sensación de "está ahí pero del otro lado" sin el costo de
-      // calcular oclusión geométrica real, y sin el "parpadeo" de mostrar/ocultar.
-      // (facingDot+1)/2 da 0 cuando está de espaldas y 1 cuando está de frente.
-      // Aplicamos una potencia <1 para "empujar" los valores intermedios y altos
-      // más cerca de 1 (más opaco de frente), sin subir el piso mínimo de atrás.
-      const facing01 = (facingDot + 1) / 2;
-      const opacity = numberScreen.behindCamera ? 0 : Math.max(0.25, Math.pow(facing01, 0.5));
-      els.anchor.style.opacity = opacity;
-      els.line.style.opacity = opacity * 0.8;
-      els.number.style.opacity = Math.max(0.55, opacity); // el número se atenúa menos: siempre debe notarse
-
-      els.anchor.style.display = 'block';
-      els.anchor.style.left = `${anchorScreen.x}px`;
-      els.anchor.style.top = `${anchorScreen.y}px`;
-
-      els.line.style.display = 'block';
-      els.line.setAttribute('x1', anchorScreen.x);
-      els.line.setAttribute('y1', anchorScreen.y);
-      els.line.setAttribute('x2', clampedX);
-      els.line.setAttribute('y2', clampedY);
-    });
-  }
-
-
-  // El renderizado 3D (rotación visual) corre a 60fps siempre, vía renderer.render().
-  // Pero recalcular las posiciones de los hotspots (que implica varios raycasting
-  // costosos contra la malla real) NO necesita esa frecuencia para verse fluido al
-  // ojo humano — lo limitamos a ~15 veces por segundo, reduciendo el costo total
-  // en más de 4x sin pérdida visual perceptible. Esta era la causa principal del
-  // lag al rotar y del consumo elevado de batería.
-  let lastHotspotUpdate = 0;
-  const HOTSPOT_UPDATE_INTERVAL = 1000 / 30; // ahora que no hay raycasting, el cálculo es barato — podemos subir a 30fps sin impacto real en batería
-
-  function animate(timestamp) {
-    requestAnimationFrame(animate);
-    if (!lastHotspotUpdate || timestamp - lastHotspotUpdate >= HOTSPOT_UPDATE_INTERVAL) {
-      updateHotspotPositions();
-      lastHotspotUpdate = timestamp;
     }
-    renderer.render(scene, camera);
-  }
-  animate();
 
-  window.addEventListener('resize', () => {
-    const newW = mount.clientWidth;
-    const newH = mount.clientHeight;
-    camera.aspect = newW / newH;
-    camera.updateProjectionMatrix();
-    renderer.setSize(newW, newH);
-  });
-</script>
+    document.querySelector('#escena-ar').addEventListener('loaded', () => {
+      if (vieneDeUnDisplay) return; // ya está todo ocultado, no hace falta nada más
+      // Buscamos el <video> que MindAR ya debería haber insertado en el DOM
+      const intentarEnganchar = () => {
+        const video = document.querySelector('video');
+        if (video) {
+          if (video.readyState >= 2) {
+            // El video ya tiene al menos un frame listo
+            marcarCamaraLista();
+          } else {
+            video.addEventListener('loadeddata', marcarCamaraLista, { once: true });
+            video.addEventListener('playing', marcarCamaraLista, { once: true });
+          }
+        } else {
+          // El <video> todavía no existe en el DOM; reintentamos en el próximo frame
+          requestAnimationFrame(intentarEnganchar);
+        }
+      };
+      intentarEnganchar();
+    });
 
+    // Red de seguridad: si por cualquier motivo la cámara nunca dispara
+    // los eventos esperados, no dejamos al usuario trabado en la pantalla
+    // de carga para siempre. (No hace falta si ya venimos de un D.)
+    if (!vieneDeUnDisplay) {
+      setTimeout(ocultarPantallaCarga, 8000);
+    }
+
+    // Para cada D, escuchamos el evento de "tracker encontrado" y
+    // redirigimos a su index.html correspondiente.
+    DISPLAYS.forEach((carpeta, index) => {
+      const target = document.querySelector(`#target-${index}`);
+      if (!target) return;
+
+      let yaRedirigido = false; // evita redirigir dos veces
+
+      target.addEventListener('targetFound', () => {
+        if (yaRedirigido) return;
+        yaRedirigido = true;
+        // Pequeña pausa para que el usuario vea la detección antes de navegar.
+        setTimeout(() => {
+          window.location.href = carpeta + 'index.html';
+        }, 300);
+      });
+    });
+  </script>
 </body>
 </html>

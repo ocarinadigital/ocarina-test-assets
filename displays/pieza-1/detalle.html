@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<!--
+  DETALLE — Mate de plata cincelada, Museo Fernández Blanco
+  Pantalla de Detalle accedida desde el botón CTA del D correspondiente.
+  Estructura libre dentro de las restricciones de paleta/CSS del sistema Ocarina.
+  Imágenes: placeholders — reemplazar por archivos reales en assets/ antes de deploy.
+  Iconografía: trazos SVG inline (sin emoji), línea fina color --gold, estilo grabado/colonial.
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Detalle — Mate de plata cincelada</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF6EE;
+    --bg-2:#F2E9D8;
+    --bg-transparent:transparent;
+    --ink:#1A1A1A;
+    --gold:#9C7A3C;
+    --gold-soft:#D9C49A;
+    --card:#FFFFFF;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html, body{ height:100%; overflow:hidden; touch-action:manipulation; }
+  *{ touch-action:manipulation; }
+  body{
+    background:linear-gradient(170deg, var(--card) 0%, var(--bg) 60%, var(--bg-2) 100%);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .screen{ max-width:480px; margin:0 auto; height:100dvh; display:flex; flex-direction:column; position:relative; overflow:hidden; padding:1.4vh 6vw 1.8vh 6vw; }
+
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-shrink:0;
+  }
+  .back-link{
+    display:flex;
+    align-items:center;
+    gap:1.2vw;
+    color:var(--gold);
+    font-size:2.2vw;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    font-weight:600;
+    min-height:36px;
+    cursor:pointer;
+  }
+  .back-link .arrow{ font-size:3.6vw; line-height:1; }
+  .logo-mark{ height:8vw; max-height:38px; width:auto; display:block; }
+
+  .title-block{ padding:1.4vh 0 0 0; text-align:center; flex-shrink:0; }
+  h1{ font-family:'Cormorant Garamond',serif; font-weight:600; font-size:7vw; line-height:1.08; margin-bottom:1.2vh; }
+  .rule{ width:34px; height:1px; background:var(--gold-soft); margin:0 auto 1.2vh auto; }
+  .subtitle{ font-size:2.5vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:2.4vh; }
+
+  .tabs-nav{
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px solid var(--gold-soft);
+    flex-shrink:0;
+    margin-bottom:1.6vh;
+  }
+  .tab-btn{
+    flex:1;
+    text-align:center;
+    background:none;
+    border:none;
+    font-family:'Inter',sans-serif;
+    font-size:2.5vw;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    font-weight:600;
+    color:rgba(26,26,26,0.45);
+    padding:0 0 0.2vh 0;
+    min-height:32px;
+    position:relative;
+    cursor:pointer;
+  }
+  .tab-btn.active{ color:var(--gold); }
+  .tab-btn.active::after{
+    content:'';
+    position:absolute;
+    bottom:-1px;
+    left:50%;
+    transform:translateX(-50%);
+    width:70%;
+    height:2px;
+    background:var(--gold);
+  }
+
+  .content-area{ flex:1; min-height:0; position:relative; overflow:hidden; }
+  .section-content{
+    display:none;
+    height:100%;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .section-content.active{ display:flex; }
+
+  .section-below-divider{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    overflow:hidden;
+  }
+
+  .ornament-divider{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:2vw;
+    flex-shrink:0;
+    overflow:visible;
+  }
+  .ornament-divider .line{ flex:1; max-width:60px; height:1px; background:var(--gold-soft); }
+  .ornament-divider .ornament-cross{ width:16px; height:16px; flex-shrink:0; }
+
+  /* Nota: ya no hay título pegado al divisor en ninguna tab — el título de
+     Historia se movió después de los boxes de datos, Contexto no lleva
+     título, y Técnica no lleva título de sección (se consideró redundante
+     con el tab activo). */
+
+  .img-placeholder{
+    background:#E4E1DA;
+    color:#9B968C;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:2.4vw;
+    text-align:center;
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .img-placeholder img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+  .line-icon{ width:100%; height:100%; stroke:var(--gold); fill:none; stroke-width:1.4; }
+
+  .historia-image-block{ display:flex; flex-direction:column; }
+  #tab-historia .hero-img{ width:100%; height:23vh; flex-shrink:0; border-radius:10px 10px 0 0; }
+
+  .data-strip{
+    display:flex;
+    justify-content:space-between;
+    background:var(--card);
+    border:1px solid var(--gold-soft);
+    border-top:none;
+    border-radius:0 0 10px 10px;
+    padding:0.8vh 2vw;
+    margin-bottom:1.2vh;
+    flex-shrink:0;
+  }
+  .data-item{
+    display:flex;
+    align-items:center;
+    gap:1.4vw;
+    flex:1.25;
+    min-width:0;
+    padding:0 1.4vw;
+    position:relative;
+    justify-content:center;
+  }
+  .data-item:last-child{ flex:0.8; }
+  .data-item:not(:first-child)::before{
+    content:'';
+    position:absolute;
+    left:0;
+    top:8%;
+    bottom:8%;
+    width:1px;
+    background:var(--gold-soft);
+  }
+  .data-icon{
+    width:6.5vw;
+    height:6.5vw;
+    max-width:24px;
+    max-height:24px;
+    color:var(--gold);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .data-text{ font-size:2.2vw; line-height:1.3; color:var(--ink); text-align:left; }
+
+  .historia-text-block{ display:flex; flex-direction:column; margin-top:-1.2vh; }
+  .historia-section-title{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:600;
+    font-size:4.4vw;
+    text-align:left;
+    flex-shrink:0;
+    margin-bottom:0.5vh;
+  }
+
+  #tab-historia .body-text{
+    font-size:2.2vw;
+    line-height:1.4;
+    color:rgba(26,26,26,0.8);
+  }
+  #tab-historia .body-text:not(:last-child){ margin-bottom:0.8vh; }
+
+  /* ===== TIMELINE — Historia (vertical, dentro de box con divisores) ===== */
+  .timeline-box{
+    flex-shrink:0;
+    background:var(--card);
+    border:1px solid var(--gold-soft);
+    border-radius:12px;
+    padding:0.5vh 3vw 0.5vh 6vw;
+    position:relative;
+    overflow:hidden;
+  }
+  /* Línea vertical única que atraviesa las 4 divisiones, centrada con los
+     puntos — se dibuja una sola vez de punta a punta del box (no por ítem). */
+  .timeline-box::before{
+    content:'';
+    position:absolute;
+    left:4.5vw;
+    top:1.3vh;
+    bottom:1.3vh;
+    width:1px;
+    background:var(--gold-soft);
+  }
+  .timeline-row{
+    display:flex;
+    align-items:center;
+    gap:2.6vw;
+    padding:1.3vh 0;
+    position:relative;
+  }
+  .timeline-row:not(:last-child){ border-bottom:1px dashed var(--gold-soft); }
+  .timeline-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--gold);
+    flex-shrink:0;
+    position:absolute;
+    left:calc(-1.5vw - 3.5px);
+    z-index:1;
+  }
+  .timeline-year{ font-size:2.3vw; font-weight:700; color:var(--gold); white-space:nowrap; flex-shrink:0; width:15vw; }
+  .timeline-text{ font-size:2vw; line-height:1.35; color:rgba(26,26,26,0.75); }
+
+  /* ===================== TÉCNICA — widget esférico ===================== */
+  /* Esfera centrada, simple — sin etiquetas laterales ni líneas conectoras
+     (eliminadas: el sistema de posición absoluta + overflow en cascada de
+     los contenedores padre cortaba visualmente la esfera contra el borde
+     superior del área, y no se resolvía de forma confiable). El nombre y
+     descripción de la técnica activa ahora viven en un texto simple debajo
+     de la esfera, en el flujo normal del documento — sin absolute, sin
+     recorte posible. */
+  .technique-widget-wrap{
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0.6vh;
+    padding-top:0.2vh;
+  }
+  .technique-sphere{
+    width:42vw;
+    height:42vw;
+    max-width:166px;
+    max-height:166px;
+    border-radius:50%;
+    overflow:hidden;
+    border:1px solid var(--gold-soft);
+    flex-shrink:0;
+    background:var(--card);
+  }
+  .technique-sphere .img-placeholder{ width:100%; height:100%; border-radius:50%; font-size:2vw; }
+
+  .technique-label{ text-align:center; }
+  .technique-label-title{
+    font-size:2.6vw;
+    font-weight:700;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin-bottom:0.2vh;
+  }
+  .technique-label-text{
+    font-size:2.2vw;
+    line-height:1.3;
+    color:rgba(26,26,26,0.75);
+    max-width:70vw;
+    margin:0 auto;
+  }
+
+  .technique-buttons-row{
+    display:flex;
+    gap:1.6vw;
+    flex-shrink:0;
+    margin-top:0.1vh;
+  }
+  .technique-btn{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--card);
+    border:1px solid var(--gold-soft);
+    border-radius:100px;
+    padding:0.3vh 1vw;
+    font-family:'Inter',sans-serif;
+    font-size:2.1vw;
+    font-weight:600;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    color:var(--gold);
+    text-align:center;
+    cursor:pointer;
+    min-height:32px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+  }
+  .technique-btn.is-active{ background:var(--gold); color:#fff; border-color:var(--gold); }
+
+  .technique-academic-row{
+    display:flex;
+    flex-direction:column;
+    gap:1.4vh;
+    flex-shrink:0;
+    margin-top:0.2vh;
+  }
+  .technique-academic-box{
+    display:flex;
+    align-items:center;
+    gap:2.6vw;
+    background:var(--card);
+    border:1px solid var(--gold-soft);
+    border-radius:10px;
+    padding:1.6vh 3vw;
+    text-align:left;
+  }
+  .technique-academic-icon{
+    width:7vw;
+    height:7vw;
+    max-width:26px;
+    max-height:26px;
+    flex-shrink:0;
+  }
+  .technique-academic-body{ flex:1; min-width:0; }
+  .technique-academic-title{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:600;
+    font-size:3.4vw;
+    margin-bottom:0.2vh;
+  }
+  .technique-academic-text{
+    font-size:2.1vw;
+    line-height:1.3;
+    color:rgba(26,26,26,0.75);
+    display:-webkit-box;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:3;
+    overflow:hidden;
+  }
+
+  #tab-contexto .hero-img{ width:100%; height:27vh; flex-shrink:0; margin-bottom:1.4vh; }
+
+  .context-cards{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:1vh;
+    overflow:hidden;
+  }
+  .context-card{
+    display:flex;
+    align-items:center;
+    gap:2.6vw;
+    background:var(--card);
+    border:1px solid var(--gold-soft);
+    border-radius:12px;
+    padding:0.8vh 3vw;
+    flex:1;
+    min-height:0;
+    text-align:left;
+  }
+  .context-card .data-icon{ margin-top:0; }
+  .context-card-body{ flex:1; min-width:0; overflow:hidden; }
+  .context-card-title{ font-family:'Cormorant Garamond',serif; font-size:3.6vw; font-weight:600; margin-bottom:0.3vh; text-align:left; }
+  .context-card-text{
+    font-size:2.2vw;
+    line-height:1.35;
+    color:rgba(26,26,26,0.75);
+    text-align:left;
+    overflow-wrap:break-word;
+    word-break:break-word;
+    display:-webkit-box;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:3;
+    overflow:hidden;
+  }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header class="header">
+    <div class="back-link" id="backLink">
+      <span class="arrow">&#8592;</span>
+      <span>Volver a la pieza</span>
+    </div>
+    <img class="logo-mark" src="assets/logo.png" alt="Logo">
+  </header>
+
+  <div class="title-block">
+    <h1>Mate de plata cincelada</h1>
+    <div class="rule"></div>
+    <div class="subtitle">Colección de Artes Decorativas</div>
+  </div>
+
+  <nav class="tabs-nav">
+    <button class="tab-btn active" data-tab="historia">Historia</button>
+    <button class="tab-btn" data-tab="tecnica">Técnica</button>
+    <button class="tab-btn" data-tab="contexto">Contexto</button>
+  </nav>
+
+  <div class="content-area">
+
+    <div class="section-content active" id="tab-historia">
+      <div class="section-below-divider">
+        <div class="historia-image-block">
+          <div class="hero-img img-placeholder">[ imagen — historia-hero ]</div>
+
+          <div class="data-strip">
+            <div class="data-item">
+              <div class="data-icon">
+                <svg class="line-icon" viewBox="0 0 24 24"><path d="M4 21h16M5 21V9.5M19 21V9.5M3 9.5l9-5.5 9 5.5M7 21v-6h3v6M14 21v-6h3v6"/></svg>
+              </div>
+              <div class="data-text">Virreinato del<br>Río de la Plata</div>
+            </div>
+            <div class="data-item">
+              <div class="data-icon">
+                <svg class="line-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v4M16 3v4M7 14h3M7 17h3M14 14h3"/></svg>
+              </div>
+              <div class="data-text">Fin. S. XVIII —<br>inicio S. XIX</div>
+            </div>
+            <div class="data-item">
+              <div class="data-icon">
+                <svg class="line-icon" viewBox="0 0 24 24"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><path d="M12 11v9M4 6.5l8 4.5 8-4.5"/></svg>
+              </div>
+              <div class="data-text">Plata</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="historia-text-block">
+          <div class="historia-section-title">Historia y origen</div>
+          <p class="body-text">
+            Este mate de plata cincelada fue realizado por orfebres locales en el ámbito virreinal rioplatense.
+            Forma parte de un conjunto de piezas destinadas al consumo de yerba mate, cuya circulación estuvo
+            asociada a prácticas cotidianas y ceremoniales en la elite urbana.
+          </p>
+          <p class="body-text">
+            La pieza refleja la maestría de los plateros locales y el prestigio de la plata como material noble
+            en los hogares, expresión de identidad, refinamiento y pertenencia social en la transición del
+            período colonial al independiente.
+          </p>
+        </div>
+
+        <div class="timeline-box">
+          <div class="timeline-row">
+            <div class="timeline-dot"></div>
+            <div class="timeline-year">1760–1770</div>
+            <div class="timeline-text">Expansión del consumo de yerba mate en el espacio rioplatense.</div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-dot"></div>
+            <div class="timeline-year">1780–1790</div>
+            <div class="timeline-text">Desarrollo de la platería local y circulación de estilos europeos.</div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-dot"></div>
+            <div class="timeline-year">1800–1810</div>
+            <div class="timeline-text">Consolidación de talleres de orfebrería en Buenos Aires.</div>
+          </div>
+          <div class="timeline-row">
+            <div class="timeline-dot"></div>
+            <div class="timeline-year">1820–1830</div>
+            <div class="timeline-text">La plata continúa como símbolo de estatus en la vida doméstica.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-content" id="tab-tecnica">
+      <div class="section-below-divider">
+        <div class="technique-widget-wrap">
+          <div class="technique-sphere">
+            <div class="img-placeholder" id="techniqueSphereImg">[ img — técnica-cincelado ]</div>
+          </div>
+
+          <div class="technique-label" id="techniqueLabel">
+            <div class="technique-label-title" id="techniqueLabelTitle">Cincelado</div>
+            <div class="technique-label-text" id="techniqueLabelText">Trabajo con cincel sobre el metal para crear texturas y motivos florales.</div>
+          </div>
+        </div>
+
+        <div class="technique-buttons-row" id="techniqueButtonsRow">
+          <div class="technique-btn is-active" data-technique="cincelado">Cincelado</div>
+          <div class="technique-btn" data-technique="repujado">Repujado</div>
+          <div class="technique-btn" data-technique="grabado">Grabado</div>
+        </div>
+
+        <div class="technique-academic-row">
+          <div class="technique-academic-box">
+            <svg class="technique-academic-icon line-icon" viewBox="0 0 24 24"><path d="M5 21l3-9 4 9M9 12l3-7 3 7M16 21l3-9"/><circle cx="12" cy="5" r="1.5"/></svg>
+            <div class="technique-academic-body">
+              <div class="technique-academic-title">Material</div>
+              <div class="technique-academic-text">Plata, material noble valorado por su resistencia y prestigio social. Su brillo y maleabilidad lo hicieron ideal para el trabajo ornamental.</div>
+            </div>
+          </div>
+          <div class="technique-academic-box">
+            <svg class="technique-academic-icon line-icon" viewBox="0 0 24 24"><path d="M14 4l-2 2 6 6 2-2-6-6zM12 6L4 14v4h4l8-8"/></svg>
+            <div class="technique-academic-body">
+              <div class="technique-academic-title">Proceso</div>
+              <div class="technique-academic-text">Combina cincelado, repujado y grabado con pulido manual final. Cada etapa requiere herramientas y tiempos de trabajo distintos.</div>
+            </div>
+          </div>
+          <div class="technique-academic-box">
+            <svg class="technique-academic-icon line-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4"/></svg>
+            <div class="technique-academic-body">
+              <div class="technique-academic-title">Detalles formales</div>
+              <div class="technique-academic-text">Cuerpo globular sobre tres patas, con frisos de motivos vegetales. La bombilla de plata completa el conjunto con igual nivel de detalle.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-content" id="tab-contexto">
+      <div class="section-below-divider">
+        <div class="hero-img img-placeholder">[ imagen — contexto-hero ]</div>
+
+        <div class="context-cards">
+          <div class="context-card">
+            <div class="data-icon">
+              <svg class="line-icon" viewBox="0 0 24 24"><path d="M3 21h18M5 21V10M19 21V10M3 10l9-6 9 6M9 21v-7h6v7"/></svg>
+            </div>
+            <div class="context-card-body">
+              <div class="context-card-title">Río de la Plata</div>
+              <div class="context-card-text">En los siglos XVIII y XIX, la región se consolidó como centro de producción y consumo, donde la platería local desarrolló un lenguaje propio. El comercio fluvial favoreció el intercambio constante con otros centros virreinales.</div>
+            </div>
+          </div>
+          <div class="context-card">
+            <div class="data-icon">
+              <svg class="line-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 14.5c2.6 0 5 2 5 5.5"/></svg>
+            </div>
+            <div class="context-card-body">
+              <div class="context-card-title">Sociabilidad y costumbres</div>
+              <div class="context-card-text">El mate es parte esencial de la vida cotidiana, símbolo de hospitalidad y pertenencia en reuniones y tertulias. Compartirlo marcaba jerarquías y afectos dentro del círculo familiar y social.</div>
+            </div>
+          </div>
+          <div class="context-card">
+            <div class="data-icon">
+              <svg class="line-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>
+            </div>
+            <div class="context-card-body">
+              <div class="context-card-title">Circulación de estilos</div>
+              <div class="context-card-text">La platería rioplatense dialoga con modas europeas, reinterpretando el neoclasicismo y el rococó con sensibilidad local. Los talleres locales adaptaban estos repertorios a los gustos y posibilidades de cada cliente.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function showSection(id) {
+    document.querySelectorAll('.section-content').forEach((el) => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach((el) => el.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    document.querySelector('.tab-btn[data-tab="' + id + '"]').classList.add('active');
+  }
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => showSection(btn.getAttribute('data-tab')));
+  });
+
+  document.getElementById('backLink').addEventListener('click', () => {
+    window.location.href = 'index.html';
+  });
+
+  // ---------- Widget esférico de Técnica ----------
+  // Esfera centrada + nombre/descripción de la técnica activa en texto simple
+  // debajo, dentro del flujo normal del documento (sin position:absolute) —
+  // así no hay overflow en cascada que pueda recortar visualmente nada.
+  const TECHNIQUE_DATA = {
+    cincelado: { label: 'Cincelado', text: 'Trabajo con cincel sobre el metal para crear texturas y motivos florales.' },
+    repujado:  { label: 'Repujado',  text: 'Deformación del metal desde el reverso para generar volumen y relieve.' },
+    grabado:   { label: 'Grabado',   text: 'Incisión fina y precisa que delinea contornos y añade detalle decorativo.' },
+  };
+
+  function setActiveTechnique(t) {
+    document.getElementById('techniqueSphereImg').textContent = '[ img — técnica-' + t + ' ]';
+    document.getElementById('techniqueLabelTitle').textContent = TECHNIQUE_DATA[t].label;
+    document.getElementById('techniqueLabelText').textContent = TECHNIQUE_DATA[t].text;
+    document.querySelectorAll('.technique-btn').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.getAttribute('data-technique') === t);
+    });
+  }
+
+  document.querySelectorAll('.technique-btn').forEach((btn) => {
+    btn.addEventListener('click', () => setActiveTechnique(btn.getAttribute('data-technique')));
+  });
+
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+</script>
+
+</body>
+</html>
