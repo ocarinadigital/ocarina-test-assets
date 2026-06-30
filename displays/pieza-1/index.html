@@ -1,217 +1,245 @@
 <!DOCTYPE html>
 <!--
-  DISPLAY FUSIONADO — D + Detalle en un único HTML
-  Mate de plata cincelada · Museo Fernández Blanco
-  
-  El D y la pantalla de Detalle viven en el mismo archivo.
-  La transición entre ellos es puro JS (translate CSS), sin
-  cambio de URL ni recarga — el navegador nunca muestra la
-  barra de carga azul ni actualiza la URL.
-  
-  Estructura interna:
-    #screen-display  → el D con visor 3D (visible al cargar)
-    #screen-detalle  → la pantalla de Detalle (oculta, desliza desde la derecha)
-  
-  Para ir a Detalle: showDetalle()
-  Para volver al D: showDisplay()
-  Para volver al escáner: window.location.href = '../../index.html?volver=1'
+  displays/bandeja-bronce/index.html — Ocarina Digital, Tipo 2 (Display AR)
+  Museo Fernández Blanco — Bandeja de Bronce Repujado
+  Archivo único: D (#screen-display) + Detalle (#screen-detalle), navegación
+  interna sin cambio de URL (ver Arquitectura_de_Archivo_Unico.pdf).
+  Generado desde display-base.html + BT_Bandeja_de_Bronce_Repujado.
+  Pendiente antes de publicar: subir bandeja-bronce.glb real y completar MODEL_URL
+  (hoy usa geometría placeholder), y subir los assets listados en el BT.
 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Mate de plata cincelada · MFB</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+<title>Bandeja de Bronce Repujado — Museo Fernández Blanco</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* =====================================================================
-   SISTEMA DE CAPAS — dos pantallas apiladas, una visible a la vez
-   El contenedor .app-root ocupa toda la pantalla y tiene overflow:hidden,
-   así la pantalla de Detalle puede estar "a la derecha" (translateX 100%)
-   sin generar scroll horizontal.
-   ===================================================================== */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit-font-smoothing: antialiased; background: #FBF6EE; }
-* { touch-action: manipulation; }
+  /* ===== LEY 6: dimensiones relativas / LEY 5: bloqueo de zoom ===== */
+  *{ box-sizing:border-box; margin:0; padding:0; touch-action:manipulation; }
+  html, body{ background:#F4EFE6; } /* LEY 3: color sólido explícito, igual al --bg del D */
 
-.app-root {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  background: #FBF6EE;
-}
+  /* ===== LEY 1: contenedor raíz fijo al viewport real ===== */
+  .app-root{
+    position:fixed; inset:0; overflow:hidden;
+    background:#F4EFE6; /* LEY 3 */
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
 
-/* Cada pantalla ocupa exactamente el 100% y se posiciona con translate.
-   La transición es suave (300ms ease) para dar sensación de app nativa. */
-.app-screen {
-  position: absolute;
-  inset: 0;
-  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
+  /* ===== Arquitectura de Archivo Único — las dos pantallas ===== */
+  .app-screen{
+    position:absolute; inset:0; overflow:hidden; /* LEY 4 */
+    height:100%; /* LEY 2 — nunca vh/dvh en hijos */
+    transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  }
+  #screen-display{ transform:translateX(0%); }
+  #screen-display.slide-out{ transform:translateX(-30%); }
+  #screen-detalle{ transform:translateX(100%); }
+  #screen-detalle.slide-in{ transform:translateX(0%); }
 
-#screen-display {
-  transform: translateX(0%);
-  background: var(--d-bg, #F7F3EC);
-}
-#screen-display.slide-out {
-  transform: translateX(-30%); /* se aleja un poco a la izquierda, efecto profundidad */
-}
+  /* =========================================================
+     #screen-display — EL D
+     Paleta (BT Bandeja de Bronce): --bg/--bg-2/--ink/--gold/--gold-soft/--card
+     ========================================================= */
+  #screen-display{
+    --bg:#F4EFE6; --bg-2:#E9DFC9; --ink:#211B14; --gold:#8C6A3F; --gold-soft:#C9A876; --card:#FFFFFF;
+    background:linear-gradient(170deg, var(--card) 0%, var(--bg) 60%, var(--bg-2) 100%);
+    color:var(--ink);
+  }
+  #screen-display .screen{ max-width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; position:relative; overflow:hidden; }
 
-#screen-detalle {
-  transform: translateX(100%); /* empieza fuera a la derecha */
-  background: var(--dt-card, #FFFFFF);
-}
-#screen-detalle.slide-in {
-  transform: translateX(0%);
-}
+  #screen-display header{ display:flex; align-items:flex-start; justify-content:space-between; padding:1.5vh 6vw 0 6vw; flex-shrink:0; }
+  #screen-display .logo{ display:flex; align-items:center; }
+  #screen-display .logo-mark{ height:9vw; max-height:42px; width:auto; display:block; }
+  #screen-display .back-link{ text-align:right; color:var(--gold); font-size:2.5vw; line-height:1.3; cursor:pointer; }
+  #screen-display .back-link .arrow{ font-size:4.5vw; margin:0 0 0.6vh auto; }
 
-/* =====================================================================
-   PALETA D (Display — visor 3D)
-   ===================================================================== */
-#screen-display {
-  --d-bg: #F7F3EC;
-  --d-ink: #1C2333;
-  --d-gold: #9C7A3C;
-  --d-gold-soft: #C7AD7B;
-  --d-card: #FFFFFF;
-  color: var(--d-ink);
-  font-family: 'Inter', sans-serif;
-}
+  #screen-display .title-block{ padding:0.8vh 7vw 0 7vw; text-align:center; flex-shrink:0; }
+  #screen-display .badge{
+    display:inline-flex; align-items:center; gap:1.2vw;
+    border:1px solid var(--gold-soft); background:transparent; color:var(--gold);
+    font-size:2.5vw; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:0.14em;
+    text-transform:uppercase; padding:0.5vh 3.5vw; border-radius:100px; margin-bottom:0.8vh; cursor:pointer;
+  }
+  #screen-display .badge-info-icon{
+    width:3.2vw; height:3.2vw; min-width:13px; min-height:13px; border-radius:50%;
+    border:1px solid var(--gold-soft); display:flex; align-items:center; justify-content:center;
+    font-size:2.2vw; font-style:italic; font-weight:700;
+  }
 
-/* =====================================================================
-   CSS DEL D — copiado de index.html, prefijado con #screen-display
-   para evitar colisiones con el CSS del Detalle
-   ===================================================================== */
-#screen-display .screen { max-width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; position:relative; overflow:hidden; }
-#screen-display header { display:flex; align-items:flex-start; justify-content:space-between; padding:1.5vh 6vw 0 6vw; flex-shrink:0; }
-#screen-display .logo { display:flex; align-items:center; gap:2.2vw; }
-#screen-display .logo-mark { width:11vw; height:11vw; max-width:50px; max-height:50px; border:1px solid var(--d-ink); border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-weight:600; font-size:5vw; }
-#screen-display .logo-text { font-size:2.6vw; line-height:1.45; letter-spacing:0.1em; text-transform:uppercase; font-weight:500; }
-#screen-display .logo-text span { display:block; }
-#screen-display .back-link { text-align:right; color:var(--d-gold); font-size:2.5vw; line-height:1.3; cursor:pointer; }
-#screen-display .back-link .arrow { font-size:4.5vw; margin:0 0 0.6vh auto; display:block; }
-#screen-display .title-block { padding:0.8vh 7vw 0 7vw; text-align:center; flex-shrink:0; }
-#screen-display h1 { font-family:'Playfair Display',serif; font-weight:500; font-size:6.8vw; line-height:1.05; margin-bottom:0.6vh; }
-#screen-display .rule { width:36px; height:1px; background:var(--d-gold-soft); margin:0 auto 0.6vh auto; }
-#screen-display .subtitle { font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--d-gold); font-weight:600; margin-bottom:0.8vh; }
-#screen-display .badge { display:inline-flex; align-items:center; gap:1.2vw; border:1px solid var(--d-gold-soft); background:transparent; color:var(--d-gold); font-size:2.5vw; font-family:'Inter',sans-serif; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; padding:0.5vh 3.5vw; border-radius:100px; margin-bottom:0.8vh; cursor:pointer; }
-#screen-display .badge-info-icon { width:3.2vw; height:3.2vw; min-width:13px; min-height:13px; border-radius:50%; border:1px solid var(--d-gold-soft); display:flex; align-items:center; justify-content:center; font-size:2.2vw; font-style:italic; font-weight:700; }
-#screen-display .info-overlay { display:none; position:fixed; inset:0; background:rgba(28,27,25,0.45); z-index:50; align-items:center; justify-content:center; padding:8vw; }
-#screen-display .info-overlay.open { display:flex; }
-#screen-display .info-box { position:relative; background:var(--d-bg); border:1px solid var(--d-gold-soft); border-radius:18px; padding:6vh 6vw 5vh 6vw; max-width:380px; width:100%; box-shadow:0 12px 36px rgba(0,0,0,0.25); }
-#screen-display .info-box-badge { display:inline-block; border:1px solid var(--d-gold-soft); color:var(--d-gold); font-size:2.6vw; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; padding:0.6vh 4vw; border-radius:100px; margin-bottom:2vh; }
-#screen-display .hotspot-popup-title { font-family:'Playfair Display',serif; font-size:4.2vw; font-weight:600; color:var(--d-ink); margin-bottom:1.5vh; }
-#screen-display .hotspot-popup-image { width:100%; height:28vh; object-fit:cover; border-radius:10px; margin-bottom:1.5vh; display:block; }
-#screen-display .hotspot-popup-image-placeholder { width:100%; height:28vh; background:#E4E1DA; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#9B968C; font-size:2.8vw; margin-bottom:1.5vh; }
-#screen-display .info-box p { font-size:3.4vw; line-height:1.55; color:var(--d-ink); }
-#screen-display .info-close { position:absolute; top:14px; right:14px; width:7vw; height:7vw; max-width:30px; max-height:30px; border-radius:50%; border:1px solid var(--d-gold-soft); background:transparent; color:var(--d-gold); font-size:4vw; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-#screen-display .viewer-wrap { position:relative; margin:1vh 0 0 0; height:50vh; flex-shrink:0; overflow:hidden; }
-#screen-display #viewer3d { width:100%; height:85%; position:absolute; top:0; left:0; z-index:2; }
-#screen-display #viewer3d canvas { touch-action:none; cursor:grab; display:block; }
-#screen-display .loading-msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#999; text-align:center; padding:0 10vw; }
-#screen-display .error-msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
-#screen-display .hotspot-anchor { position:absolute; width:1.6vw; height:1.6vw; max-width:8px; max-height:8px; border-radius:50%; background:var(--d-gold-soft); pointer-events:none; transform:translate(-50%,-50%); }
-#screen-display .hotspot-number { position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:#1C2333; border:1.4px solid var(--d-gold); color:#E8C77A; display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:700; cursor:pointer; transform:translate(-50%,-50%); box-shadow:0 2px 6px rgba(0,0,0,0.25); }
-#screen-display .hotspot-number::after { content:''; position:absolute; inset:0; border-radius:50%; border:1.4px solid var(--d-gold-soft); animation:hotspotBreathe 2.4s ease-in-out infinite; }
-@keyframes hotspotBreathe { 0%,100%{transform:scale(1);opacity:0.7;} 50%{transform:scale(1.55);opacity:0;} }
-#screen-display #hotspots3d { position:absolute; inset:0; pointer-events:none; z-index:5; }
-#screen-display #hotspots3d .hotspot-number { pointer-events:auto; }
-#screen-display .shadow-plane { position:absolute; bottom:8%; left:50%; transform:translateX(-50%); width:96%; max-width:420px; height:auto; z-index:1; pointer-events:none; }
-#screen-display .rotate-arc-ring { position:absolute; bottom:8%; left:50%; transform:translateX(-50%); width:96%; max-width:420px; height:auto; color:var(--d-gold); z-index:3; pointer-events:none; }
-#screen-display .rotate-hint-text { position:absolute; bottom:6%; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:1.8vw; color:var(--d-gold); font-size:2.6vw; white-space:nowrap; z-index:4; }
-#screen-display .hand-icon-wrap { width:7vw; max-width:30px; height:7vw; max-height:30px; flex-shrink:0; background-color:var(--d-gold); opacity:0.85; -webkit-mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png'); mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png'); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; }
-#screen-display .cta-detail { margin:0 6vw 1.2vh 6vw; background:var(--d-card); border:1px solid var(--d-gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; cursor:pointer; }
-#screen-display .cta-icon { width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--d-gold-soft); color:var(--d-gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:4.5vw; }
-#screen-display .cta-title { font-size:3.3vw; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--d-gold); margin-bottom:0.4vh; }
-#screen-display .cta-sub { font-size:3.3vw; }
-#screen-display .cta-arrow { color:var(--d-gold-soft); font-size:4.5vw; flex-shrink:0; }
+  #screen-display .info-overlay{
+    display:none; position:fixed; inset:0; background:rgba(28,27,25,0.45); z-index:50;
+    align-items:center; justify-content:center; padding:8vw;
+  }
+  #screen-display .info-overlay.open{ display:flex; }
+  #screen-display .info-box{
+    position:relative; background:var(--bg); border:1px solid var(--gold-soft); border-radius:18px;
+    padding:6vh 6vw 5vh 6vw; max-width:380px; width:100%; box-shadow:0 12px 36px rgba(0,0,0,0.25);
+  }
+  #screen-display .info-box-badge{
+    display:inline-block; border:1px solid var(--gold-soft); color:var(--gold);
+    font-size:2.6vw; font-weight:600; letter-spacing:0.14em; text-transform:uppercase;
+    padding:0.6vh 4vw; border-radius:100px; margin-bottom:2vh;
+  }
+  #screen-display .hotspot-popup-title{
+    font-family:'Cormorant Garamond',serif; font-size:4.6vw; font-weight:600; color:var(--ink); margin-bottom:1.5vh;
+  }
+  #screen-display .hotspot-popup-image{ width:100%; height:32vh; object-fit:cover; border-radius:10px; margin-bottom:1.5vh; display:block; }
+  #screen-display .hotspot-popup-image-placeholder{
+    width:100%; height:32vh; background:#E4E1DA; border-radius:10px; align-items:center; justify-content:center;
+    color:#9B968C; font-size:2.8vw; margin-bottom:1.5vh;
+  }
+  #screen-display .info-box p{ font-size:3.4vw; line-height:1.55; color:var(--ink); }
+  #screen-display .info-close{
+    position:absolute; top:14px; right:14px; width:7vw; height:7vw; max-width:30px; max-height:30px;
+    border-radius:50%; border:1px solid var(--gold-soft); background:transparent; color:var(--gold);
+    font-size:4vw; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  #screen-display h1{ font-family:'Cormorant Garamond',serif; font-weight:600; font-size:7.2vw; line-height:1.05; margin-bottom:0.6vh; }
+  #screen-display .rule{ width:36px; height:1px; background:var(--gold-soft); margin:0 auto 0.6vh auto; }
+  #screen-display .subtitle{ font-size:2.6vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:0.8vh; }
 
-/* =====================================================================
-   PALETA DETALLE
-   ===================================================================== */
-#screen-detalle {
-  --dt-bg: #FBF6EE;
-  --dt-bg-2: #F2E9D8;
-  --dt-ink: #1A1A1A;
-  --dt-gold: #9C7A3C;
-  --dt-gold-soft: #D9C49A;
-  --dt-card: #FFFFFF;
-  font-family: 'Inter', sans-serif;
-  color: var(--dt-ink);
-  background: linear-gradient(170deg, var(--dt-card) 0%, var(--dt-bg) 60%, var(--dt-bg-2) 100%);
-}
+  #screen-display .viewer-wrap{ position:relative; margin:1vh 0 0 0; height:50vh; flex-shrink:0; overflow:hidden; }
+  #screen-display #viewer3d{ width:100%; height:85%; position:absolute; top:0; left:0; z-index:2; }
+  #screen-display #viewer3d canvas{ touch-action:none; cursor:grab; display:block; }
+  #screen-display .model-pending-note{
+    position:absolute; bottom:1%; left:50%; transform:translateX(-50%); z-index:6;
+    font-size:2.2vw; color:var(--gold); opacity:0.55; white-space:nowrap; pointer-events:none;
+  }
+  #screen-display .loading-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#999; text-align:center; padding:0 10vw; }
+  #screen-display .error-msg{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:3vw; color:#b33; text-align:center; padding:0 10vw; }
 
-/* =====================================================================
-   CSS DEL DETALLE — copiado de detalle.html, prefijado con #screen-detalle
-   ===================================================================== */
-#screen-detalle .dt-screen { max-width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; position:relative; overflow:hidden; padding:1.2vh 6vw 1.4vh 6vw; }
-#screen-detalle .dt-header { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
-#screen-detalle .dt-back { display:flex; align-items:center; gap:1.2vw; color:var(--dt-gold); font-size:2.2vw; text-transform:uppercase; letter-spacing:0.08em; font-weight:600; min-height:34px; cursor:pointer; }
-#screen-detalle .dt-back .arrow { font-size:3.6vw; line-height:1; }
-#screen-detalle .dt-logo { height:8vw; max-height:38px; width:auto; display:block; }
-#screen-detalle .dt-title-block { padding:0.8vh 0 0 0; text-align:center; flex-shrink:0; }
-#screen-detalle .dt-h1 { font-family:'Cormorant Garamond',serif; font-weight:600; font-size:7vw; line-height:1.08; margin-bottom:0.8vh; }
-#screen-detalle .dt-rule { width:34px; height:1px; background:var(--dt-gold-soft); margin:0 auto 0.8vh auto; }
-#screen-detalle .dt-subtitle { font-size:2.5vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--dt-gold); font-weight:600; margin-bottom:1.4vh; }
-#screen-detalle .dt-tabs-nav { display:flex; justify-content:space-between; border-bottom:1px solid var(--dt-gold-soft); flex-shrink:0; margin-bottom:1.2vh; }
-#screen-detalle .dt-tab-btn { flex:1; text-align:center; background:none; border:none; font-family:'Inter',sans-serif; font-size:2.5vw; letter-spacing:0.08em; text-transform:uppercase; font-weight:600; color:rgba(26,26,26,0.45); padding:0 0 0.2vh 0; min-height:32px; position:relative; cursor:pointer; }
-#screen-detalle .dt-tab-btn.active { color:var(--dt-gold); }
-#screen-detalle .dt-tab-btn.active::after { content:''; position:absolute; bottom:-1px; left:50%; transform:translateX(-50%); width:70%; height:2px; background:var(--dt-gold); }
-#screen-detalle .dt-content-area { flex:1; min-height:0; position:relative; overflow:hidden; }
-#screen-detalle .dt-section { display:none; height:100%; flex-direction:column; overflow:hidden; }
-#screen-detalle .dt-section.active { display:flex; }
-#screen-detalle .dt-below { flex:1; min-height:0; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; }
-#screen-detalle .dt-img-placeholder { background:#E4E1DA; color:#9B968C; display:flex; align-items:center; justify-content:center; font-size:2.4vw; text-align:center; border-radius:10px; overflow:hidden; }
-#screen-detalle .dt-img-placeholder img { width:100%; height:100%; object-fit:cover; display:block; }
-#screen-detalle .dt-line-icon { width:100%; height:100%; stroke:var(--dt-gold); fill:none; stroke-width:1.4; }
-/* Historia */
-#screen-detalle .dt-img-block { display:flex; flex-direction:column; }
-#screen-detalle .dt-hero-img { width:100%; height:18vh; flex-shrink:0; border-radius:10px 10px 0 0; }
-#screen-detalle .dt-data-strip { display:flex; justify-content:space-between; background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-top:none; border-radius:0 0 10px 10px; padding:0.8vh 2vw; margin-bottom:1.2vh; flex-shrink:0; }
-#screen-detalle .dt-data-item { display:flex; align-items:center; gap:1.4vw; flex:1.25; min-width:0; padding:0 1.4vw; position:relative; justify-content:center; }
-#screen-detalle .dt-data-item:last-child { flex:0.8; }
-#screen-detalle .dt-data-item:not(:first-child)::before { content:''; position:absolute; left:0; top:8%; bottom:8%; width:1px; background:var(--dt-gold-soft); }
-#screen-detalle .dt-data-icon { width:6.5vw; height:6.5vw; max-width:24px; max-height:24px; color:var(--dt-gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-#screen-detalle .dt-data-text { font-size:2.2vw; line-height:1.3; color:var(--dt-ink); text-align:left; }
-#screen-detalle .dt-text-block { display:flex; flex-direction:column; margin-top:-0.4vh; }
-#screen-detalle .dt-section-title { font-family:'Cormorant Garamond',serif; font-weight:600; font-size:4.4vw; text-align:left; flex-shrink:0; margin-bottom:0.3vh; }
-#screen-detalle .dt-body-text { font-size:2.1vw; line-height:1.38; color:rgba(26,26,26,0.8); }
-#screen-detalle .dt-body-text:not(:last-child) { margin-bottom:0.6vh; }
-/* Timeline */
-#screen-detalle .dt-timeline-box { flex-shrink:0; background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-radius:12px; padding:0.3vh 3vw 0.3vh 6vw; position:relative; overflow:hidden; }
-#screen-detalle .dt-timeline-box::before { content:''; position:absolute; left:4.5vw; top:1vh; bottom:1vh; width:1px; background:var(--dt-gold-soft); }
-#screen-detalle .dt-timeline-row { display:flex; align-items:center; gap:2.6vw; padding:0.9vh 0; position:relative; }
-#screen-detalle .dt-timeline-row:not(:last-child) { border-bottom:1px dashed var(--dt-gold-soft); }
-#screen-detalle .dt-dot { width:7px; height:7px; border-radius:50%; background:var(--dt-gold); flex-shrink:0; position:absolute; left:calc(-1.5vw - 3.5px); z-index:1; }
-#screen-detalle .dt-year { font-size:2.3vw; font-weight:700; color:var(--dt-gold); white-space:nowrap; flex-shrink:0; width:15vw; }
-#screen-detalle .dt-timeline-text { font-size:2vw; line-height:1.35; color:rgba(26,26,26,0.75); }
-/* Técnica */
-#screen-detalle .dt-technique-wrap { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:0.6vh; padding-top:0.2vh; }
-#screen-detalle .dt-sphere { width:42vw; height:42vw; max-width:166px; max-height:166px; border-radius:50%; overflow:hidden; border:1px solid var(--dt-gold-soft); flex-shrink:0; background:var(--dt-card); display:flex; align-items:center; justify-content:center; color:#9B968C; font-size:2vw; }
-#screen-detalle .dt-sphere img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; }
-#screen-detalle .dt-tech-label { text-align:center; }
-#screen-detalle .dt-tech-label-title { font-size:2.6vw; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--dt-gold); margin-bottom:0.2vh; }
-#screen-detalle .dt-tech-label-text { font-size:2.2vw; line-height:1.3; color:rgba(26,26,26,0.75); max-width:70vw; margin:0 auto; }
-#screen-detalle .dt-tech-btns { display:flex; gap:1.6vw; flex-shrink:0; margin-top:0.1vh; }
-#screen-detalle .dt-tech-btn { flex:1; display:flex; align-items:center; justify-content:center; background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-radius:100px; padding:0.3vh 1vw; font-family:'Inter',sans-serif; font-size:2.1vw; font-weight:600; letter-spacing:0.03em; text-transform:uppercase; color:var(--dt-gold); text-align:center; cursor:pointer; min-height:32px; }
-#screen-detalle .dt-tech-btn.active { background:var(--dt-gold); color:#fff; border-color:var(--dt-gold); }
-#screen-detalle .dt-academic-row { display:flex; flex-direction:column; gap:1.4vh; flex-shrink:0; margin-top:0.2vh; }
-#screen-detalle .dt-academic-box { display:flex; align-items:center; gap:2.6vw; background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-radius:10px; padding:1.6vh 3vw; }
-#screen-detalle .dt-academic-icon { width:7vw; height:7vw; max-width:26px; max-height:26px; flex-shrink:0; }
-#screen-detalle .dt-academic-body { flex:1; min-width:0; }
-#screen-detalle .dt-academic-title { font-family:'Cormorant Garamond',serif; font-weight:600; font-size:3.4vw; margin-bottom:0.2vh; }
-#screen-detalle .dt-academic-text { font-size:2.1vw; line-height:1.3; color:rgba(26,26,26,0.75); display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
-/* Contexto */
-#screen-detalle .dt-ctx-hero { width:100%; height:27vh; flex-shrink:0; margin-bottom:1.4vh; border-radius:10px; }
-#screen-detalle .dt-ctx-cards { flex:1; min-height:0; display:flex; flex-direction:column; gap:1vh; overflow:hidden; }
-#screen-detalle .dt-ctx-card { display:flex; align-items:center; gap:2.6vw; background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-radius:12px; padding:0.8vh 3vw; flex:1; min-height:0; }
-#screen-detalle .dt-ctx-icon { width:6.5vw; height:6.5vw; max-width:24px; max-height:24px; color:var(--dt-gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-#screen-detalle .dt-ctx-body { flex:1; min-width:0; overflow:hidden; }
-#screen-detalle .dt-ctx-title { font-family:'Cormorant Garamond',serif; font-size:3.6vw; font-weight:600; margin-bottom:0.3vh; }
-#screen-detalle .dt-ctx-text { font-size:2.2vw; line-height:1.35; color:rgba(26,26,26,0.75); overflow-wrap:break-word; word-break:break-word; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+  #screen-display .hotspot-anchor{ position:absolute; width:1.6vw; height:1.6vw; max-width:8px; max-height:8px; border-radius:50%; background:var(--gold-soft); pointer-events:none; transform:translate(-50%,-50%); }
+  #screen-display .hotspot-number{ position:absolute; width:6.5vw; height:6.5vw; max-width:28px; max-height:28px; border-radius:50%; background:#1C2333; border:1.4px solid var(--gold); color:#E8C77A; display:flex; align-items:center; justify-content:center; font-size:3.2vw; font-weight:700; cursor:pointer; transform:translate(-50%,-50%); box-shadow:0 2px 6px rgba(0,0,0,0.25); }
+  #screen-display .hotspot-number::after{ content:''; position:absolute; inset:0; border-radius:50%; border:1.4px solid var(--gold-soft); animation:hotspotBreathe 2.4s ease-in-out infinite; }
+  @keyframes hotspotBreathe{ 0%,100%{ transform:scale(1); opacity:0.7; } 50%{ transform:scale(1.55); opacity:0; } }
+  #screen-display #hotspots3d{ position:absolute; inset:0; pointer-events:none; z-index:5; }
+  #screen-display #hotspots3d .hotspot-number{ pointer-events:auto; }
+
+  #screen-display .shadow-plane{ position:absolute; bottom:8%; left:50%; transform:translateX(-50%); width:96%; max-width:420px; height:auto; z-index:1; pointer-events:none; }
+  #screen-display .rotate-arc-ring{ position:absolute; bottom:8%; left:50%; transform:translateX(-50%); width:96%; max-width:420px; height:auto; color:var(--gold); z-index:3; pointer-events:none; }
+  #screen-display .rotate-hint-text{ position:absolute; bottom:6%; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:1.8vw; color:var(--gold); font-size:2.6vw; white-space:nowrap; z-index:4; }
+  #screen-display .hand-icon-wrap{
+    width:7vw; max-width:30px; height:7vw; max-height:30px; flex-shrink:0; background-color:var(--gold); opacity:0.85;
+    -webkit-mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png');
+    mask-image:url('https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/Icono_Rotar.png');
+    -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+    -webkit-mask-position:center; mask-position:center;
+  }
+
+  #screen-display .cta-detail{ margin:0 6vw 1.2vh 6vw; background:var(--card); border:1px solid var(--gold-soft); border-radius:14px; padding:1.2vh 5vw; display:flex; align-items:center; gap:4vw; text-align:left; width:calc(100% - 12vw); flex-shrink:0; font-family:'Inter',sans-serif; cursor:pointer; }
+  #screen-display .cta-icon{ width:9vw; height:9vw; max-width:40px; max-height:40px; border-radius:50%; border:1.4px solid var(--gold-soft); color:var(--gold); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  #screen-display .cta-icon svg{ width:4.4vw; height:4.4vw; max-width:18px; max-height:18px; }
+  #screen-display .cta-title{ font-size:3.3vw; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--gold); margin-bottom:0.4vh; }
+  #screen-display .cta-sub{ font-size:3.3vw; color:var(--ink); }
+  #screen-display .cta-arrow{ color:var(--gold-soft); font-size:4.5vw; flex-shrink:0; }
+
+  /* =========================================================
+     #screen-detalle — EL DT, todas las clases con prefijo dt-
+     Paleta (BT, mapeada igual al D): --dt-bg/--dt-bg-2/--dt-ink/--dt-gold/--dt-gold-soft/--dt-card
+     ========================================================= */
+  #screen-detalle{
+    --dt-bg:#F4EFE6; --dt-bg-2:#E9DFC9; --dt-ink:#211B14; --dt-gold:#8C6A3F; --dt-gold-soft:#C9A876; --dt-card:#FFFFFF;
+    background:linear-gradient(170deg, var(--dt-card) 0%, var(--dt-bg) 60%, var(--dt-bg-2) 100%);
+    color:var(--dt-ink);
+  }
+  #screen-detalle .dt-screen{ max-width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; }
+
+  #screen-detalle .dt-header{ display:flex; align-items:flex-start; justify-content:space-between; padding:1.5vh 6vw 0 6vw; flex-shrink:0; }
+  #screen-detalle .dt-back-link{ text-align:left; color:var(--dt-gold); font-size:2.5vw; line-height:1.3; cursor:pointer; display:flex; flex-direction:column; }
+  #screen-detalle .dt-back-link .dt-arrow{ font-size:4.5vw; margin:0 auto 0.6vh 0; }
+  #screen-detalle .dt-logo-mark{ height:8vw; max-height:38px; width:auto; display:block; }
+
+  #screen-detalle .dt-title-block{ padding:1vh 7vw 0 7vw; text-align:center; flex-shrink:0; }
+  #screen-detalle .dt-h1{ font-family:'Cormorant Garamond',serif; font-weight:600; font-size:6.4vw; line-height:1.05; margin-bottom:0.6vh; }
+  #screen-detalle .dt-rule{ width:36px; height:1px; background:var(--dt-gold-soft); margin:0 auto 0.6vh auto; }
+  #screen-detalle .dt-subtitle{ font-size:2.5vw; letter-spacing:0.12em; text-transform:uppercase; color:var(--dt-gold); font-weight:600; margin-bottom:1vh; }
+
+  #screen-detalle .dt-tabs-nav{ display:flex; padding:0 5vw; border-bottom:1px solid var(--dt-gold-soft); flex-shrink:0; }
+  #screen-detalle .dt-tab-btn{
+    flex:1; background:none; border:none; font-family:'Inter',sans-serif; font-size:3vw; font-weight:600;
+    letter-spacing:0.04em; color:rgba(33,27,20,0.45); padding:1.4vh 1vw 1.2vh 1vw; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px; /* el gap real vive en padding-bottom, no en margin del nav */
+  }
+  #screen-detalle .dt-tab-btn.active{ color:var(--dt-gold); border-bottom:2px solid var(--dt-gold); }
+
+  #screen-detalle .dt-content-area{ flex:1; overflow:hidden; padding:2vh 6vw 2vh 6vw; min-height:0; }
+  #screen-detalle .dt-tab-panel{ height:100%; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; }
+
+  /* --- Hero de imagen (siempre primero dentro de un tab que la incluya) --- */
+  #screen-detalle .dt-hero-group{ display:flex; flex-direction:column; gap:1.4vh; }
+  #screen-detalle .dt-hero-img{ width:100%; height:18vh; object-fit:cover; border-radius:12px; display:block; }
+  #screen-detalle .dt-hero-placeholder{
+    width:100%; height:18vh; border-radius:12px; background:#E4E1DA; color:#9B968C;
+    display:flex; align-items:center; justify-content:center; font-size:2.6vw; text-align:center;
+  }
+
+  /* --- Box de datos / epígrafe (pegado a la imagen, mismo grupo) --- */
+  #screen-detalle .dt-epigraph{
+    display:flex; background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-radius:10px;
+    padding:1.2vh 0;
+  }
+  #screen-detalle .dt-epigraph-item{
+    display:flex; align-items:center; gap:1.6vw; padding:0 2.5vw; border-right:1px solid var(--dt-gold-soft);
+  }
+  #screen-detalle .dt-epigraph-item:last-child{ border-right:none; }
+  #screen-detalle .dt-epigraph-icon{ width:4.2vw; height:4.2vw; max-width:18px; max-height:18px; color:var(--dt-gold); flex-shrink:0; }
+  #screen-detalle .dt-epigraph-icon svg{ width:100%; height:100%; }
+  #screen-detalle .dt-epigraph-text{ font-size:2.4vw; line-height:1.25; color:var(--dt-ink); font-weight:600; }
+
+  /* --- Bloque de texto: título de sección + párrafos --- */
+  #screen-detalle .dt-text-block{ display:flex; flex-direction:column; gap:0.8vh; }
+  #screen-detalle .dt-section-title{ font-family:'Cormorant Garamond',serif; font-size:4.4vw; font-weight:600; color:var(--dt-ink); }
+  #screen-detalle .dt-text-block p{ font-size:2.9vw; line-height:1.5; color:rgba(33,27,20,0.85); }
+
+  /* --- Timeline --- */
+  #screen-detalle .dt-timeline{
+    background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-radius:12px; padding:1.6vh 4vw;
+  }
+  #screen-detalle .dt-timeline-row{
+    position:relative; display:flex; gap:3vw; padding:1vh 0 1vh 5vw; border-bottom:1px dotted var(--dt-gold-soft);
+  }
+  #screen-detalle .dt-timeline-row:last-child{ border-bottom:none; }
+  #screen-detalle .dt-timeline-row::before{
+    content:''; position:absolute; left:1.6vw; top:0; bottom:0; width:1px; background:var(--dt-gold-soft);
+  }
+  #screen-detalle .dt-timeline-row::after{
+    content:''; position:absolute; left:calc(1.6vw - 2.5px); top:50%; transform:translateY(-50%);
+    width:6px; height:6px; border-radius:50%; background:var(--dt-gold);
+  }
+  #screen-detalle .dt-timeline-year{ font-size:2.7vw; font-weight:700; color:var(--dt-gold); flex-shrink:0; min-width:18vw; }
+  #screen-detalle .dt-timeline-text{ font-size:2.7vw; line-height:1.4; color:var(--dt-ink); }
+
+  /* --- Widget interactivo (Técnica): selector + contenido, todo en flujo normal --- */
+  #screen-detalle .dt-widget{ display:flex; flex-direction:column; gap:1.4vh; }
+  #screen-detalle .dt-widget-selectors{ display:flex; gap:2vw; }
+  #screen-detalle .dt-widget-btn{
+    flex:1; background:var(--dt-card); border:1px solid var(--dt-gold-soft); border-radius:100px;
+    font-family:'Inter',sans-serif; font-size:2.6vw; font-weight:600; color:var(--dt-ink);
+    padding:0.9vh 1vw; cursor:pointer; text-align:center;
+  }
+  #screen-detalle .dt-widget-btn.active{ background:var(--dt-gold); border-color:var(--dt-gold); color:#FFFFFF; }
+  #screen-detalle .dt-widget-display{ display:flex; flex-direction:column; gap:1vh; }
+  #screen-detalle .dt-widget-img{ width:100%; height:15vh; object-fit:cover; border-radius:12px; display:block; }
+  #screen-detalle .dt-widget-placeholder{
+    width:100%; height:15vh; border-radius:12px; background:#E4E1DA; color:#9B968C;
+    display:flex; align-items:center; justify-content:center; font-size:2.6vw; text-align:center;
+  }
+  #screen-detalle .dt-widget-name{ font-family:'Cormorant Garamond',serif; font-size:4vw; font-weight:600; color:var(--dt-gold); }
+  #screen-detalle .dt-widget-desc{ font-size:2.8vw; line-height:1.45; color:rgba(33,27,20,0.85); }
+
+  /* --- Boxes académicos (apilados verticalmente, ícono+texto cada uno) --- */
+  #screen-detalle .dt-academic-list{ display:flex; flex-direction:column; gap:1.2vh; }
+  #screen-detalle .dt-academic-box{
+    display:flex; align-items:flex-start; gap:3vw; background:var(--dt-card); border:1px solid var(--dt-gold-soft);
+    border-radius:12px; padding:1.6vh 4vw;
+  }
+  #screen-detalle .dt-academic-icon{ width:5.5vw; height:5.5vw; max-width:24px; max-height:24px; color:var(--dt-gold); flex-shrink:0; margin-top:0.2vh; }
+  #screen-detalle .dt-academic-icon svg{ width:100%; height:100%; }
+  #screen-detalle .dt-academic-title{ font-size:3vw; font-weight:700; color:var(--dt-ink); margin-bottom:0.3vh; }
+  #screen-detalle .dt-academic-text{ font-size:2.7vw; line-height:1.45; color:rgba(33,27,20,0.85); }
 </style>
-
 <script type="importmap">
 {
   "imports": {
@@ -225,298 +253,386 @@ html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit
 
 <div class="app-root">
 
-  <!-- ================================================================
-       PANTALLA 1 — D (Display con visor 3D)
-       Visible al cargar. Se desplaza a la izquierda al ir a Detalle.
-       ================================================================ -->
+  <!-- ===================== EL D — #screen-display ===================== -->
   <div class="app-screen" id="screen-display">
-  <div class="screen">
+    <div class="screen">
 
-    <header>
-      <div class="logo">
-        <img class="logo-mark" src="assets/logo.png" alt="Logo" style="width:11vw;height:11vw;max-width:50px;max-height:50px;object-fit:contain;border-radius:50%;">
-      </div>
-      <div class="back-link" onclick="volverAlEscaner()">
-        <span class="arrow">&#8592;</span>
-        volver al<br>escáner
-      </div>
-    </header>
+      <header>
+        <div class="logo">
+          <img class="logo-mark" src="assets/logo.png" alt="Museo Fernández Blanco" onerror="this.style.display='none'">
+        </div>
+        <div class="back-link" onclick="volverAlEscaner()">
+          <div class="arrow">&#8592;</div>
+          volver al<br>escáner
+        </div>
+      </header>
 
-    <div class="title-block">
-      <button class="badge" id="badgeBtn" type="button">Pieza complementaria <span class="badge-info-icon">i</span></button>
-      <h1>Mate de plata cincelada</h1>
-      <div class="rule"></div>
-      <div class="subtitle">Siglo XVIII – Virreinato del Río de la Plata</div>
+      <div class="title-block">
+        <button class="badge" id="badgeBtn" type="button">Pieza restaurada <span class="badge-info-icon">i</span></button>
+        <h1>Bandeja de bronce repujado</h1>
+        <div class="rule"></div>
+        <div class="subtitle">Siglo XIX — Colección de Artes Decorativas</div>
+      </div>
+
+      <div class="info-overlay" id="infoOverlay">
+        <div class="info-box">
+          <button class="info-close" id="infoClose" type="button">&times;</button>
+          <div class="info-box-badge">Pieza restaurada</div>
+          <p>Esta bandeja fue restaurada en 2019 por el taller de conservación del museo, recuperando el brillo original del repujado tras décadas de oxidación.</p>
+        </div>
+      </div>
+
+      <div id="hotspotPopupsContainer"></div>
+
+      <div class="viewer-wrap">
+        <div id="viewer3d">
+          <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
+        </div>
+
+        <svg class="shadow-plane" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <radialGradient id="shadowGradient" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#000000" stop-opacity="1"/>
+              <stop offset="65%" stop-color="#000000" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <ellipse cx="150" cy="71" rx="145" ry="27.6" fill="url(#shadowGradient)"/>
+        </svg>
+
+        <svg class="rotate-arc-ring" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <marker id="ringArrowStart" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
+            </marker>
+            <marker id="ringArrowEnd" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <path d="M 64.4 54.7 A 121 23.1 0 0 0 29 71 A 121 23.1 0 0 0 150 94.1 A 121 23.1 0 0 0 271 71 A 121 23.1 0 0 0 235.6 54.7"
+                fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65"
+                marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
+        </svg>
+
+        <div class="rotate-hint-text">
+          <div class="hand-icon-wrap"></div>
+          <span>Desliza para rotar</span>
+        </div>
+
+        <div id="hotspots3d"></div>
+        <div class="model-pending-note" id="modelPendingNote" style="display:none;">Modelo 3D placeholder — pendiente bandeja-bronce.glb</div>
+      </div>
+
+      <button class="cta-detail" onclick="showDetalle()" type="button">
+        <div class="cta-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4.5C4 3.67 4.67 3 5.5 3H12V21H5.5C4.67 21 4 20.33 4 19.5V4.5Z"/>
+            <path d="M20 4.5C20 3.67 19.33 3 18.5 3H12V21H18.5C19.33 21 20 20.33 20 19.5V4.5Z"/>
+          </svg>
+        </div>
+        <div style="flex:1;">
+          <div class="cta-title">Detalle de la pieza</div>
+          <div class="cta-sub">Historia, técnica y contexto</div>
+        </div>
+        <div class="cta-arrow">&#8250;</div>
+      </button>
+
     </div>
-
-    <div class="info-overlay" id="infoOverlay">
-      <div class="info-box">
-        <button class="info-close" id="infoClose" type="button">&times;</button>
-        <div class="info-box-badge">Pieza complementaria</div>
-        <p>Una pieza que no forma parte de la exhibición actual, pero complementa la historia de la época.</p>
-      </div>
-    </div>
-
-    <div class="info-overlay" id="hotspot1Overlay">
-      <div class="info-box">
-        <button class="info-close" data-close-hotspot type="button">&times;</button>
-        <div class="hotspot-popup-title">Hotspot 1 — Título</div>
-        <img class="hotspot-popup-image" src="assets/hotspot-1.jpg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-        <div class="hotspot-popup-image-placeholder" style="display:none;">[ imagen — hotspot-1 ]</div>
-        <p>Descripción del punto de interés 1.</p>
-      </div>
-    </div>
-    <div class="info-overlay" id="hotspot2Overlay">
-      <div class="info-box">
-        <button class="info-close" data-close-hotspot type="button">&times;</button>
-        <div class="hotspot-popup-title">Hotspot 2 — Título</div>
-        <img class="hotspot-popup-image" src="assets/hotspot-2.jpg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-        <div class="hotspot-popup-image-placeholder" style="display:none;">[ imagen — hotspot-2 ]</div>
-        <p>Descripción del punto de interés 2.</p>
-      </div>
-    </div>
-    <div class="info-overlay" id="hotspot3Overlay">
-      <div class="info-box">
-        <button class="info-close" data-close-hotspot type="button">&times;</button>
-        <div class="hotspot-popup-title">Hotspot 3 — Título</div>
-        <img class="hotspot-popup-image" src="assets/hotspot-3.jpg" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-        <div class="hotspot-popup-image-placeholder" style="display:none;">[ imagen — hotspot-3 ]</div>
-        <p>Descripción del punto de interés 3.</p>
-      </div>
-    </div>
-
-    <div class="viewer-wrap">
-      <div id="viewer3d">
-        <div class="loading-msg" id="loadingMsg">Cargando modelo 3D…</div>
-      </div>
-      <svg class="shadow-plane" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
-        <defs><radialGradient id="shadowGradient" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#000000" stop-opacity="1"/><stop offset="65%" stop-color="#000000" stop-opacity="0"/></radialGradient></defs>
-        <ellipse cx="150" cy="71" rx="145" ry="27.6" fill="url(#shadowGradient)"/>
-      </svg>
-      <svg class="rotate-arc-ring" viewBox="0 0 300 130" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <marker id="ringArrowStart" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/></marker>
-          <marker id="ringArrowEnd" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L11 6 L1 11 L4 6 Z" fill="currentColor"/></marker>
-        </defs>
-        <path d="M 64.4 54.7 A 121 23.1 0 0 0 29 71 A 121 23.1 0 0 0 150 94.1 A 121 23.1 0 0 0 271 71 A 121 23.1 0 0 0 235.6 54.7" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65" marker-start="url(#ringArrowStart)" marker-end="url(#ringArrowEnd)"/>
-      </svg>
-      <div class="rotate-hint-text">
-        <div class="hand-icon-wrap"></div>
-        <span>Desliza para rotar</span>
-      </div>
-      <div id="hotspots3d"></div>
-    </div>
-
-    <button class="cta-detail" onclick="showDetalle()">
-      <div class="cta-icon">&#128214;</div>
-      <div style="flex:1;">
-        <div class="cta-title">Detalle de la pieza</div>
-        <div class="cta-sub">Historia, origen y uso</div>
-      </div>
-      <div class="cta-arrow">&#8250;</div>
-    </button>
-
   </div>
-  </div><!-- /screen-display -->
 
-  <!-- ================================================================
-       PANTALLA 2 — DETALLE (tabs Historia / Técnica / Contexto)
-       Empieza fuera a la derecha (translateX 100%). Desliza al centro
-       cuando se llama a showDetalle(). Vuelve a la derecha con showDisplay().
-       ================================================================ -->
+  <!-- ===================== EL DETALLE — #screen-detalle ===================== -->
   <div class="app-screen" id="screen-detalle">
-  <div class="dt-screen">
+    <div class="dt-screen">
 
-    <header class="dt-header">
-      <div class="dt-back" onclick="showDisplay()">
-        <span class="arrow">&#8592;</span>
-        <span>Volver a la pieza</span>
+      <div class="dt-header">
+        <div class="dt-back-link" onclick="showDisplay()">
+          <div class="dt-arrow">&#8592;</div>
+          Volver a la pieza
+        </div>
+        <img class="dt-logo-mark" src="assets/logo.png" alt="Museo Fernández Blanco" onerror="this.style.display='none'">
       </div>
-      <img class="dt-logo" src="assets/logo.png" alt="Logo">
-    </header>
 
-    <div class="dt-title-block">
-      <div class="dt-h1">Mate de plata cincelada</div>
-      <div class="dt-rule"></div>
-      <div class="dt-subtitle">Colección de Artes Decorativas</div>
-    </div>
+      <div class="dt-title-block">
+        <div class="dt-h1">Bandeja de bronce repujado</div>
+        <div class="dt-rule"></div>
+        <div class="dt-subtitle">Colección de Artes Decorativas</div>
+      </div>
 
-    <nav class="dt-tabs-nav">
-      <button class="dt-tab-btn active" data-tab="historia">Historia</button>
-      <button class="dt-tab-btn" data-tab="tecnica">Técnica</button>
-      <button class="dt-tab-btn" data-tab="contexto">Contexto</button>
-    </nav>
+      <div class="dt-tabs-nav">
+        <button class="dt-tab-btn active" id="dtTabBtn-historia" onclick="dtSwitchTab('historia')" type="button">Historia</button>
+        <button class="dt-tab-btn" id="dtTabBtn-tecnica" onclick="dtSwitchTab('tecnica')" type="button">Técnica</button>
+        <button class="dt-tab-btn" id="dtTabBtn-contexto" onclick="dtSwitchTab('contexto')" type="button">Contexto</button>
+      </div>
 
-    <div class="dt-content-area">
+      <div class="dt-content-area">
 
-      <!-- TAB HISTORIA -->
-      <div class="dt-section active" id="dt-tab-historia">
-        <div class="dt-below">
-          <div class="dt-img-block">
-            <div class="dt-hero-img dt-img-placeholder">[ imagen — historia-hero ]</div>
-            <div class="dt-data-strip">
-              <div class="dt-data-item">
-                <div class="dt-data-icon"><svg class="dt-line-icon" viewBox="0 0 24 24"><path d="M4 21h16M5 21V9.5M19 21V9.5M3 9.5l9-5.5 9 5.5M7 21v-6h3v6M14 21v-6h3v6"/></svg></div>
-                <div class="dt-data-text">Virreinato del<br>Río de la Plata</div>
+        <!-- ---------- TAB: Historia ---------- -->
+        <div class="dt-tab-panel" id="dtTab-historia">
+
+          <div class="dt-hero-group">
+            <img class="dt-hero-img" src="assets/detalle-historia-hero.jpg" alt="Bandeja de bronce repujado"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="dt-hero-placeholder" style="display:none;">[ imagen — detalle-historia-hero.jpg ]</div>
+
+            <div class="dt-epigraph">
+              <div class="dt-epigraph-item" style="flex:1.25;">
+                <span class="dt-epigraph-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 21V8L12 3L20 8V21"/><path d="M4 21H20"/><path d="M9 21V14H15V21"/><path d="M9 11H9.01M12 11H12.01M15 11H15.01"/>
+                  </svg>
+                </span>
+                <span class="dt-epigraph-text">Buenos Aires,<br>Argentina</span>
               </div>
-              <div class="dt-data-item">
-                <div class="dt-data-icon"><svg class="dt-line-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 3v4M16 3v4M7 14h3M7 17h3M14 14h3"/></svg></div>
-                <div class="dt-data-text">Fin. S. XVIII —<br>inicio S. XIX</div>
+              <div class="dt-epigraph-item" style="flex:1.25;">
+                <span class="dt-epigraph-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5H20.5"/><path d="M8 3V6.5M16 3V6.5"/>
+                  </svg>
+                </span>
+                <span class="dt-epigraph-text">Segunda mitad<br>S. XIX</span>
               </div>
-              <div class="dt-data-item">
-                <div class="dt-data-icon"><svg class="dt-line-icon" viewBox="0 0 24 24"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><path d="M12 11v9M4 6.5l8 4.5 8-4.5"/></svg></div>
-                <div class="dt-data-text">Plata</div>
+              <div class="dt-epigraph-item" style="flex:0.8;">
+                <span class="dt-epigraph-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3.5 8L12 4L20.5 8L12 12L3.5 8Z"/><path d="M3.5 8V16L12 20L20.5 16V8"/><path d="M12 12V20"/>
+                  </svg>
+                </span>
+                <span class="dt-epigraph-text">Bronce</span>
               </div>
             </div>
           </div>
+
           <div class="dt-text-block">
             <div class="dt-section-title">Historia y origen</div>
-            <p class="dt-body-text">Este mate de plata cincelada fue realizado por orfebres locales en el ámbito virreinal rioplatense. Forma parte de un conjunto de piezas destinadas al consumo de yerba mate, cuya circulación estuvo asociada a prácticas cotidianas y ceremoniales en la elite urbana.</p>
-            <p class="dt-body-text">La pieza refleja la maestría de los plateros locales y el prestigio de la plata como material noble en los hogares, expresión de identidad, refinamiento y pertenencia social en la transición del período colonial al independiente.</p>
+            <p>Esta bandeja de bronce repujado fue producida en un taller porteño hacia fines del siglo XIX, en un contexto de auge del coleccionismo de objetos decorativos europeos y su reinterpretación local.</p>
+            <p>Piezas como esta solían formar parte del ajuar de recepción en residencias de la elite urbana, exhibidas en salones como símbolo de refinamiento y apertura a las corrientes estéticas internacionales.</p>
           </div>
-          <div class="dt-timeline-box">
-            <div class="dt-timeline-row"><div class="dt-dot"></div><div class="dt-year">1760–1770</div><div class="dt-timeline-text">Expansión del consumo de yerba mate en el espacio rioplatense.</div></div>
-            <div class="dt-timeline-row"><div class="dt-dot"></div><div class="dt-year">1780–1790</div><div class="dt-timeline-text">Desarrollo de la platería local y circulación de estilos europeos.</div></div>
-            <div class="dt-timeline-row"><div class="dt-dot"></div><div class="dt-year">1800–1810</div><div class="dt-timeline-text">Consolidación de talleres de orfebrería en Buenos Aires.</div></div>
-            <div class="dt-timeline-row"><div class="dt-dot"></div><div class="dt-year">1820–1830</div><div class="dt-timeline-text">La plata continúa como símbolo de estatus en la vida doméstica.</div></div>
-          </div>
-        </div>
-      </div>
 
-      <!-- TAB TÉCNICA -->
-      <div class="dt-section" id="dt-tab-tecnica">
-        <div class="dt-below">
-          <div class="dt-technique-wrap">
-            <div class="dt-sphere" id="dt-sphere">[ img — técnica-cincelado ]</div>
-            <div class="dt-tech-label">
-              <div class="dt-tech-label-title" id="dt-tech-title">Cincelado</div>
-              <div class="dt-tech-label-text" id="dt-tech-text">Trabajo con cincel sobre el metal para crear texturas y motivos florales.</div>
+          <div class="dt-timeline">
+            <div class="dt-timeline-row">
+              <div class="dt-timeline-year">1850–1860</div>
+              <div class="dt-timeline-text">Llegada de artesanos europeos especializados en metalistería al Río de la Plata.</div>
+            </div>
+            <div class="dt-timeline-row">
+              <div class="dt-timeline-year">1860–1870</div>
+              <div class="dt-timeline-text">Consolidación de talleres locales de bronce y fundición ornamental.</div>
+            </div>
+            <div class="dt-timeline-row">
+              <div class="dt-timeline-year">1870–1880</div>
+              <div class="dt-timeline-text">Auge del coleccionismo de objetos decorativos en residencias porteñas.</div>
+            </div>
+            <div class="dt-timeline-row">
+              <div class="dt-timeline-year">1880–1890</div>
+              <div class="dt-timeline-text">La bandeja repujada se consolida como pieza de exhibición doméstica.</div>
             </div>
           </div>
-          <div class="dt-tech-btns">
-            <div class="dt-tech-btn active" data-tech="cincelado">Cincelado</div>
-            <div class="dt-tech-btn" data-tech="repujado">Repujado</div>
-            <div class="dt-tech-btn" data-tech="grabado">Grabado</div>
-          </div>
-          <div class="dt-academic-row">
-            <div class="dt-academic-box">
-              <svg class="dt-academic-icon dt-line-icon" viewBox="0 0 24 24"><path d="M5 21l3-9 4 9M9 12l3-7 3 7M16 21l3-9"/><circle cx="12" cy="5" r="1.5"/></svg>
-              <div class="dt-academic-body"><div class="dt-academic-title">Material</div><div class="dt-academic-text">Plata, material noble valorado por su resistencia y prestigio social. Su brillo y maleabilidad lo hicieron ideal para el trabajo ornamental.</div></div>
-            </div>
-            <div class="dt-academic-box">
-              <svg class="dt-academic-icon dt-line-icon" viewBox="0 0 24 24"><path d="M14 4l-2 2 6 6 2-2-6-6zM12 6L4 14v4h4l8-8"/></svg>
-              <div class="dt-academic-body"><div class="dt-academic-title">Proceso</div><div class="dt-academic-text">Combina cincelado, repujado y grabado con pulido manual final. Cada etapa requiere herramientas y tiempos de trabajo distintos.</div></div>
-            </div>
-            <div class="dt-academic-box">
-              <svg class="dt-academic-icon dt-line-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4"/></svg>
-              <div class="dt-academic-body"><div class="dt-academic-title">Detalles formales</div><div class="dt-academic-text">Cuerpo globular sobre tres patas, con frisos de motivos vegetales. La bombilla de plata completa el conjunto con igual nivel de detalle.</div></div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- TAB CONTEXTO -->
-      <div class="dt-section" id="dt-tab-contexto">
-        <div class="dt-below">
-          <div class="dt-ctx-hero dt-img-placeholder">[ imagen — contexto-hero ]</div>
-          <div class="dt-ctx-cards">
-            <div class="dt-ctx-card">
-              <div class="dt-ctx-icon"><svg class="dt-line-icon" viewBox="0 0 24 24"><path d="M3 21h18M5 21V10M19 21V10M3 10l9-6 9 6M9 21v-7h6v7"/></svg></div>
-              <div class="dt-ctx-body"><div class="dt-ctx-title">Río de la Plata</div><div class="dt-ctx-text">En los siglos XVIII y XIX, la región se consolidó como centro de producción y consumo, donde la platería local desarrolló un lenguaje propio. El comercio fluvial favoreció el intercambio constante con otros centros virreinales.</div></div>
+        </div>
+
+        <!-- ---------- TAB: Técnica ---------- -->
+        <div class="dt-tab-panel" id="dtTab-tecnica" style="display:none;">
+
+          <div class="dt-widget" id="dtWidgetTecnica">
+            <div class="dt-widget-selectors" id="dtWidgetSelectors"></div>
+            <div class="dt-widget-display" id="dtWidgetDisplay"></div>
+          </div>
+
+          <div class="dt-academic-list">
+            <div class="dt-academic-box">
+              <span class="dt-academic-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="10" width="6" height="10"/><rect x="9.5" y="6" width="6" height="14"/><rect x="16" y="13" width="5" height="7"/>
+                </svg>
+              </span>
+              <div>
+                <div class="dt-academic-title">Material</div>
+                <div class="dt-academic-text">Bronce, aleación de cobre y estaño valorada por su resistencia y maleabilidad para el trabajo ornamental.</div>
+              </div>
             </div>
-            <div class="dt-ctx-card">
-              <div class="dt-ctx-icon"><svg class="dt-line-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 14.5c2.6 0 5 2 5 5.5"/></svg></div>
-              <div class="dt-ctx-body"><div class="dt-ctx-title">Sociabilidad y costumbres</div><div class="dt-ctx-text">El mate es parte esencial de la vida cotidiana, símbolo de hospitalidad y pertenencia en reuniones y tertulias. Compartirlo marcaba jerarquías y afectos dentro del círculo familiar y social.</div></div>
+            <div class="dt-academic-box">
+              <span class="dt-academic-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.5 3.5L18 7L8 17L4 18L5 14L14.5 3.5Z"/><path d="M16 5.5L19.5 9"/>
+                </svg>
+              </span>
+              <div>
+                <div class="dt-academic-title">Proceso</div>
+                <div class="dt-academic-text">Combina repujado, calado y patinado controlado, en un proceso de varias etapas sobre la misma pieza.</div>
+              </div>
             </div>
-            <div class="dt-ctx-card">
-              <div class="dt-ctx-icon"><svg class="dt-line-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></div>
-              <div class="dt-ctx-body"><div class="dt-ctx-title">Circulación de estilos</div><div class="dt-ctx-text">La platería rioplatense dialoga con modas europeas, reinterpretando el neoclasicismo y el rococó con sensibilidad local. Los talleres locales adaptaban estos repertorios a los gustos y posibilidades de cada cliente.</div></div>
+            <div class="dt-academic-box">
+              <span class="dt-academic-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 3L20 8.5V15.5L12 21L4 15.5V8.5L12 3Z"/><path d="M12 3V21"/>
+                </svg>
+              </span>
+              <div>
+                <div class="dt-academic-title">Detalles formales</div>
+                <div class="dt-academic-text">Cuerpo ovalado con borde calado, escena figurativa central y cuatro patas en forma de garra.</div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
+        </div>
+
+        <!-- ---------- TAB: Contexto ---------- -->
+        <div class="dt-tab-panel" id="dtTab-contexto" style="display:none;">
+
+          <div class="dt-hero-group">
+            <img class="dt-hero-img" src="assets/detalle-contexto-hero.jpg" alt="Contexto de la pieza"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="dt-hero-placeholder" style="display:none;">[ imagen — detalle-contexto-hero.jpg ]</div>
+          </div>
+
+          <div class="dt-academic-list">
+            <div class="dt-academic-box">
+              <span class="dt-academic-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 21V8L12 3L20 8V21"/><path d="M4 21H20"/><path d="M9 21V14H15V21"/><path d="M9 11H9.01M12 11H12.01M15 11H15.01"/>
+                </svg>
+              </span>
+              <div>
+                <div class="dt-academic-title">Buenos Aires tardo-colonial</div>
+                <div class="dt-academic-text">Hacia fines del siglo XIX, Buenos Aires consolidaba su perfil cosmopolita, con una elite que adoptaba activamente el gusto decorativo europeo.</div>
+              </div>
+            </div>
+            <div class="dt-academic-box">
+              <span class="dt-academic-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8.5" cy="8" r="2.6"/><circle cx="16" cy="9" r="2.2"/><path d="M3 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M12.5 19c0-2.3 2-4 4-4s4 1.7 4 4"/>
+                </svg>
+              </span>
+              <div>
+                <div class="dt-academic-title">Objetos de exhibición</div>
+                <div class="dt-academic-text">Las bandejas ornamentales no tenían uso funcional cotidiano: se exhibían como pieza de salón, reforzando el estatus social de sus dueños.</div>
+              </div>
+            </div>
+            <div class="dt-academic-box">
+              <span class="dt-academic-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/><path d="M12 3C9 6 9 18 12 21"/><path d="M12 3C15 6 15 18 12 21"/><path d="M3 12H21"/>
+                </svg>
+              </span>
+              <div>
+                <div class="dt-academic-title">Circulación de oficios</div>
+                <div class="dt-academic-text">La llegada de artesanos europeos especializados permitió la instalación de talleres locales que combinaban técnica importada con motivos propios.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
     </div>
   </div>
-  </div><!-- /screen-detalle -->
 
-</div><!-- /app-root -->
+</div>
 
-<!-- ================================================================
-     JS NAVEGACIÓN — transición entre pantallas sin cambio de URL
-     ================================================================ -->
 <script>
-  // Bloqueo de zoom
+  // ===== LEY 5: bloqueo de zoom y gestos accidentales =====
   document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
   let lastTouchEnd = 0;
-  document.addEventListener('touchend', (e) => { const now = Date.now(); if (now - lastTouchEnd <= 300) e.preventDefault(); lastTouchEnd = now; }, { passive: false });
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+</script>
+
+<script>
+  // ===== Navegación interna del archivo único (sin cambio de URL) =====
+  const screenDisplay = document.getElementById('screen-display');
+  const screenDetalle = document.getElementById('screen-detalle');
 
   function showDetalle() {
-    document.getElementById('screen-display').classList.add('slide-out');
-    document.getElementById('screen-detalle').classList.add('slide-in');
+    screenDisplay.classList.add('slide-out');
+    screenDetalle.classList.add('slide-in');
   }
   function showDisplay() {
-    document.getElementById('screen-display').classList.remove('slide-out');
-    document.getElementById('screen-detalle').classList.remove('slide-in');
+    screenDisplay.classList.remove('slide-out');
+    screenDetalle.classList.remove('slide-in');
   }
+  // Única excepción con cambio de URL real: vuelve al escáner AR raíz.
   function volverAlEscaner() {
     window.location.href = '../../index.html?volver=1';
   }
 
-  // Badge D
+  // ===== Tabs del Detalle =====
+  const dtTabs = ['historia', 'tecnica', 'contexto'];
+  function dtSwitchTab(name) {
+    dtTabs.forEach((t) => {
+      document.getElementById(`dtTab-${t}`).style.display = (t === name) ? 'flex' : 'none';
+      document.getElementById(`dtTabBtn-${t}`).classList.toggle('active', t === name);
+    });
+  }
+</script>
+
+<script>
+  // ===== Popup del badge (Pieza restaurada) =====
   const badgeBtn = document.getElementById('badgeBtn');
   const infoOverlay = document.getElementById('infoOverlay');
   const infoClose = document.getElementById('infoClose');
+
   badgeBtn?.addEventListener('click', () => infoOverlay.classList.add('open'));
   infoClose?.addEventListener('click', () => infoOverlay.classList.remove('open'));
-  infoOverlay?.addEventListener('click', (e) => { if (e.target === infoOverlay) infoOverlay.classList.remove('open'); });
-
-  // Hotspot popups D
-  document.querySelectorAll('.info-overlay[id^="hotspot"]').forEach((overlay) => {
-    overlay.querySelector('[data-close-hotspot]')?.addEventListener('click', () => overlay.classList.remove('open'));
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
-  });
-
-  // Tabs Detalle
-  document.querySelectorAll('.dt-tab-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const tab = btn.getAttribute('data-tab');
-      document.querySelectorAll('.dt-section').forEach((s) => s.classList.remove('active'));
-      document.querySelectorAll('.dt-tab-btn').forEach((b) => b.classList.remove('active'));
-      document.getElementById('dt-tab-' + tab).classList.add('active');
-      btn.classList.add('active');
-    });
-  });
-
-  // Widget de Técnica en Detalle
-  const TECH_DATA = {
-    cincelado: { title: 'Cincelado', text: 'Trabajo con cincel sobre el metal para crear texturas y motivos florales.' },
-    repujado:  { title: 'Repujado',  text: 'Deformación del metal desde el reverso para generar volumen y relieve.' },
-    grabado:   { title: 'Grabado',   text: 'Incisión fina y precisa que delinea contornos y añade detalle decorativo.' },
-  };
-  document.querySelectorAll('.dt-tech-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const t = btn.getAttribute('data-tech');
-      document.getElementById('dt-sphere').textContent = '[ img — técnica-' + t + ' ]';
-      document.getElementById('dt-tech-title').textContent = TECH_DATA[t].title;
-      document.getElementById('dt-tech-text').textContent = TECH_DATA[t].text;
-      document.querySelectorAll('.dt-tech-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
+  infoOverlay?.addEventListener('click', (e) => {
+    if (e.target === infoOverlay) infoOverlay.classList.remove('open');
   });
 </script>
 
-<!-- ================================================================
-     JS VISOR 3D — igual que antes, sin cambios
-     ================================================================ -->
+<script>
+  // ===== Widget interactivo de Técnica (selector con 3 variantes) =====
+  const TECNICA_VARIANTS = [
+    { id: 'repujado', name: 'Repujado', desc: 'Deformación del metal desde el reverso para crear relieve en la escena central.', image: 'assets/detalle-tecnica-repujado.jpg' },
+    { id: 'calado',   name: 'Calado',   desc: 'Recortes geométricos pasantes en el borde, que aligeran la pieza visualmente.', image: 'assets/detalle-tecnica-calado.jpg' },
+    { id: 'patinado', name: 'Patinado', desc: 'Tratamiento químico de superficie que acelera y controla la oxidación decorativa del bronce.', image: 'assets/detalle-tecnica-patinado.jpg' },
+  ];
+
+  const selectorsEl = document.getElementById('dtWidgetSelectors');
+  const displayEl = document.getElementById('dtWidgetDisplay');
+
+  TECNICA_VARIANTS.forEach((v) => {
+    const btn = document.createElement('button');
+    btn.className = 'dt-widget-btn';
+    btn.type = 'button';
+    btn.textContent = v.name;
+    btn.addEventListener('click', () => renderTecnicaVariant(v.id));
+    btn.id = `dtWidgetBtn-${v.id}`;
+    selectorsEl.appendChild(btn);
+  });
+
+  function renderTecnicaVariant(id) {
+    const variant = TECNICA_VARIANTS.find((v) => v.id === id);
+    if (!variant) return;
+
+    TECNICA_VARIANTS.forEach((v) => {
+      document.getElementById(`dtWidgetBtn-${v.id}`).classList.toggle('active', v.id === id);
+    });
+
+    displayEl.innerHTML = `
+      <img class="dt-widget-img" src="${variant.image}" alt="${variant.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="dt-widget-placeholder" style="display:none;">[ imagen — ${variant.image.split('/').pop()} ]</div>
+      <div class="dt-widget-name">${variant.name}</div>
+      <div class="dt-widget-desc">${variant.desc}</div>
+    `;
+  }
+
+  renderTecnicaVariant('repujado');
+</script>
+
 <script>
   window.addEventListener('error', (e) => {
     const el = document.getElementById('loadingMsg');
-    if (el) { el.className = 'error-msg'; el.innerHTML = 'Error JS: ' + (e.message || 'desconocido'); }
+    if (el) {
+      el.className = 'error-msg';
+      el.innerHTML = 'Error JS: ' + (e.message || 'desconocido') + '<br><span style="font-size:0.75em;opacity:0.7;">' + (e.filename || '') + ':' + (e.lineno || '') + '</span>';
+    }
   });
   window.addEventListener('unhandledrejection', (e) => {
     const el = document.getElementById('loadingMsg');
-    if (el) { el.className = 'error-msg'; el.innerHTML = 'Promesa rechazada: ' + (e.reason?.message || e.reason || 'desconocido'); }
+    if (el) {
+      el.className = 'error-msg';
+      el.innerHTML = 'Promesa rechazada: ' + (e.reason?.message || e.reason || 'desconocido');
+    }
   });
 </script>
 
@@ -526,11 +642,16 @@ html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit
 
   document.getElementById('loadingMsg').textContent = 'Módulos cargados. Iniciando escena 3D…';
 
-  const MODEL_URL = 'https://raw.githubusercontent.com/ocarinadigital/ocarina-test-assets/main/silver_offering_bowl_c._1880_ce.glb';
+  // BT: "Modelo 3D pendiente, usar placeholder" — MODEL_URL queda vacío a propósito.
+  // Reemplazar por la URL real del .glb (ej. assets/bandeja-bronce.glb) antes de publicar.
+  const MODEL_URL = '';
 
   const mount = document.getElementById('viewer3d');
   const loadingMsg = document.getElementById('loadingMsg');
-  const w = mount.clientWidth, h = mount.clientHeight;
+  const modelPendingNote = document.getElementById('modelPendingNote');
+
+  const w = mount.clientWidth;
+  const h = mount.clientHeight;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
@@ -558,51 +679,96 @@ html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit
   const envLight2 = new THREE.PointLight(0xffffff, 400, 20);
   envLight2.position.set(-5, 3, -5);
   envScene.add(envLight2);
-  scene.environment = pmremGenerator.fromScene(envScene, 0.04).texture;
+  const envTexture = pmremGenerator.fromScene(envScene, 0.04).texture;
+  scene.environment = envTexture;
   pmremGenerator.dispose();
 
   const modelGroup = new THREE.Group();
   scene.add(modelGroup);
-  const loader = new GLTFLoader();
-  let loadResolved = false;
 
-  const timeoutId = setTimeout(() => {
-    if (!loadResolved) { loadingMsg.className = 'error-msg'; loadingMsg.innerHTML = 'El modelo está demorando demasiado.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>'; }
-  }, 15000);
+  // Material de la pieza — BT: Metal con pátina/desgaste (tabla 4.4).
+  const MATERIAL_CONFIG = {
+    metalness: 0.3,
+    roughness: 0.6,
+  };
 
   async function applySpecGlossTextureManually(gltf) {
     const json = gltf.parser.json;
-    if (!json.extensionsUsed?.includes('KHR_materials_pbrSpecularGlossiness')) return;
-    for (let i = 0; i < (json.materials || []).length; i++) {
-      const matDef = json.materials[i];
-      const sg = matDef.extensions?.KHR_materials_pbrSpecularGlossiness;
-      if (!sg?.diffuseTexture) continue;
-      const tex = await gltf.parser.getDependency('texture', sg.diffuseTexture.index);
-      tex.colorSpace = THREE.SRGBColorSpace;
+    if (!json.extensionsUsed || !json.extensionsUsed.includes('KHR_materials_pbrSpecularGlossiness')) return;
+    for (let matIndex = 0; matIndex < (json.materials || []).length; matIndex++) {
+      const matDef = json.materials[matIndex];
+      const specGloss = matDef.extensions && matDef.extensions.KHR_materials_pbrSpecularGlossiness;
+      if (!specGloss || specGloss.diffuseTexture == null) continue;
+      const diffuseTex = await gltf.parser.getDependency('texture', specGloss.diffuseTexture.index);
+      diffuseTex.colorSpace = THREE.SRGBColorSpace;
       gltf.scene.traverse((node) => {
-        if (!node.isMesh) return;
-        const mats = Array.isArray(node.material) ? node.material : [node.material];
-        mats.forEach((mat) => { if (mat.name === matDef.name) { mat.map = tex; mat.color.set(0xffffff); mat.metalness = 0.4; mat.roughness = 0.5; mat.needsUpdate = true; } });
+        if (node.isMesh && node.material) {
+          const materials = Array.isArray(node.material) ? node.material : [node.material];
+          materials.forEach((mat) => {
+            if (mat.name === matDef.name) {
+              mat.map = diffuseTex;
+              mat.color.set(0xffffff);
+              mat.metalness = MATERIAL_CONFIG.metalness;
+              mat.roughness = MATERIAL_CONFIG.roughness;
+              mat.needsUpdate = true;
+            }
+          });
+        }
       });
     }
   }
 
+  // ---------- HOTSPOTS ANCLADOS EN 3D (BT: 3 hotspots) ----------
   const HOTSPOTS_3D = [
-    { id: 'hotspot-1', azimuthDeg: 35,  heightFraction: 0.95, label: 'Borde superior',  overlayId: 'hotspot1Overlay' },
-    { id: 'hotspot-2', azimuthDeg: 110, heightFraction: 0.45, label: 'Cuerpo central',  overlayId: 'hotspot2Overlay' },
-    { id: 'hotspot-3', azimuthDeg: 200, heightFraction: 0.1,  label: 'Base',             overlayId: 'hotspot3Overlay' },
+    { id: 'hotspot-1', azimuthDeg: 20,  heightFraction: 0.9,  label: 'Borde calado',
+      popupTitle: 'Borde calado', popupText: 'El borde presenta un calado geométrico continuo, técnica que aligera visualmente la pieza sin comprometer su resistencia estructural.', popupImage: 'assets/hotspot-1.jpg' },
+    { id: 'hotspot-2', azimuthDeg: 140, heightFraction: 0.5,  label: 'Escena central',
+      popupTitle: 'Escena central', popupText: 'El centro de la bandeja representa una escena de caza, motivo recurrente en la platería y bronces ornamentales del período.', popupImage: 'assets/hotspot-2.jpg' },
+    { id: 'hotspot-3', azimuthDeg: 250, heightFraction: 0.15, label: 'Base y patas',
+      popupTitle: 'Base y patas', popupText: 'Las cuatro patas en forma de garra sostienen el cuerpo de la bandeja, un recurso decorativo heredado del mobiliario neoclásico.', popupImage: 'assets/hotspot-3.jpg' },
   ];
 
   const hotspotContainer = document.getElementById('hotspots3d');
-  const hotspotSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  hotspotSvg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;');
-  hotspotContainer.appendChild(hotspotSvg);
   const hotspotElements = {};
+  let modelCenterForHotspots = null;
+
+  const hotspotSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  hotspotSvg.setAttribute('style', 'position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;');
+  hotspotContainer.appendChild(hotspotSvg);
+
+  function createHotspotPopups() {
+    const container = document.getElementById('hotspotPopupsContainer');
+    HOTSPOTS_3D.forEach((hp) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'info-overlay';
+      overlay.id = `popup-${hp.id}`;
+      overlay.innerHTML = `
+        <div class="info-box">
+          <button class="info-close" type="button">&times;</button>
+          <div class="hotspot-popup-title"></div>
+          <img class="hotspot-popup-image" alt="">
+          <div class="hotspot-popup-image-placeholder" style="display:none;"></div>
+          <p></p>
+        </div>
+      `;
+      overlay.querySelector('.hotspot-popup-title').textContent = hp.popupTitle || '';
+      overlay.querySelector('p').textContent = hp.popupText || '';
+      const img = overlay.querySelector('.hotspot-popup-image');
+      const placeholder = overlay.querySelector('.hotspot-popup-image-placeholder');
+      img.src = hp.popupImage || '';
+      placeholder.textContent = `[ imagen — ${hp.id} ]`;
+      img.onerror = () => { img.style.display = 'none'; placeholder.style.display = 'flex'; };
+      overlay.querySelector('.info-close').addEventListener('click', () => overlay.classList.remove('open'));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+      container.appendChild(overlay);
+    });
+  }
+  createHotspotPopups();
 
   function createHotspotElements() {
-    HOTSPOTS_3D.forEach((h, idx) => {
+    HOTSPOTS_3D.forEach((hp, idx) => {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('stroke', '#C7AD7B');
+      line.setAttribute('stroke', 'var(--gold-soft)');
       line.setAttribute('stroke-width', '1.5');
       hotspotSvg.appendChild(line);
 
@@ -613,84 +779,115 @@ html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit
       const number = document.createElement('div');
       number.className = 'hotspot-number';
       number.textContent = String(idx + 1);
-      number.title = h.label;
+      number.title = hp.label;
       number.addEventListener('click', () => {
-        const overlay = document.getElementById(h.overlayId);
+        const overlay = document.getElementById(`popup-${hp.id}`);
         if (overlay) overlay.classList.add('open');
       });
       hotspotContainer.appendChild(number);
-      hotspotElements[h.id] = { line, anchor, number };
+
+      hotspotElements[hp.id] = { line, anchor, number };
     });
   }
   createHotspotElements();
 
-  let modelBoxForHotspots = null, modelCenterForHotspots = null;
-  const hotspotAnchorsLocal = {};
   const HOTSPOT_LINE_LENGTH = 0.55;
   const SCREEN_CLAMP_MARGIN = 18;
+  const hotspotAnchorsLocal = {};
 
   function projectToScreen(vec3) {
-    const halfW = mount.clientWidth / 2, halfH = mount.clientHeight / 2;
+    const halfW = mount.clientWidth / 2;
+    const halfH = mount.clientHeight / 2;
     const p = vec3.clone().project(camera);
     return { x: p.x * halfW + halfW, y: -p.y * halfH + halfH, behindCamera: p.z > 1 };
   }
 
   function computeHotspotAnchors(model) {
-    const raycaster = new THREE.Raycaster();
+    const anchorRaycaster = new THREE.Raycaster();
     const box = new THREE.Box3().setFromObject(model);
     const sphere = new THREE.Sphere();
     box.getBoundingSphere(sphere);
     const rayOriginDistance = sphere.radius * 2.5;
-    HOTSPOTS_3D.forEach((h) => {
-      const azimuthRad = (h.azimuthDeg * Math.PI) / 180;
-      const y = sphere.center.y - sphere.radius + sphere.radius * 2 * h.heightFraction;
-      const origin = new THREE.Vector3(sphere.center.x + Math.sin(azimuthRad) * rayOriginDistance, y, sphere.center.z + Math.cos(azimuthRad) * rayOriginDistance);
+
+    HOTSPOTS_3D.forEach((hp) => {
+      const azimuthRad = (hp.azimuthDeg * Math.PI) / 180;
+      const y = sphere.center.y - sphere.radius + sphere.radius * 2 * hp.heightFraction;
+      const origin = new THREE.Vector3(
+        sphere.center.x + Math.sin(azimuthRad) * rayOriginDistance,
+        y,
+        sphere.center.z + Math.cos(azimuthRad) * rayOriginDistance
+      );
       const direction = sphere.center.clone().sub(origin).normalize();
-      raycaster.set(origin, direction);
-      const intersects = raycaster.intersectObject(model, true);
-      if (intersects.length > 0) { hotspotAnchorsLocal[h.id] = model.parent.worldToLocal(intersects[0].point.clone()); }
-      else { const fb = sphere.center.clone().add(new THREE.Vector3(Math.sin(azimuthRad), 0, Math.cos(azimuthRad)).multiplyScalar(sphere.radius)); fb.y = y; hotspotAnchorsLocal[h.id] = fb; }
+      anchorRaycaster.set(origin, direction);
+      const intersects = anchorRaycaster.intersectObject(model, true);
+
+      if (intersects.length > 0) {
+        hotspotAnchorsLocal[hp.id] = model.parent.worldToLocal(intersects[0].point.clone());
+      } else {
+        const fallback = sphere.center.clone().add(
+          new THREE.Vector3(Math.sin(azimuthRad), 0, Math.cos(azimuthRad)).multiplyScalar(sphere.radius)
+        );
+        fallback.y = y;
+        hotspotAnchorsLocal[hp.id] = fallback;
+      }
     });
   }
 
   function updateHotspotPositions() {
     if (!modelCenterForHotspots) return;
     const center = modelCenterForHotspots;
-    HOTSPOTS_3D.forEach((h) => {
-      const localAnchor = hotspotAnchorsLocal[h.id];
+
+    HOTSPOTS_3D.forEach((hp) => {
+      const localAnchor = hotspotAnchorsLocal[hp.id];
       if (!localAnchor) return;
+
       const outwardDir = localAnchor.clone().sub(center).normalize();
       const localNumberPos = localAnchor.clone().add(outwardDir.multiplyScalar(HOTSPOT_LINE_LENGTH));
+
       const worldAnchor = localAnchor.clone().applyEuler(modelGroup.rotation);
       const worldNumber = localNumberPos.clone().applyEuler(modelGroup.rotation);
       const worldOutward = outwardDir.clone().applyEuler(modelGroup.rotation);
+
       const anchorScreen = projectToScreen(worldAnchor);
       const numberScreen = projectToScreen(worldNumber);
-      const els = hotspotElements[h.id];
+
+      const els = hotspotElements[hp.id];
       if (!els) return;
-      const mw = mount.clientWidth, mh = mount.clientHeight;
-      const cx = Math.max(SCREEN_CLAMP_MARGIN, Math.min(mw - SCREEN_CLAMP_MARGIN, numberScreen.x));
-      const cy = Math.max(SCREEN_CLAMP_MARGIN, Math.min(mh - SCREEN_CLAMP_MARGIN, numberScreen.y));
+
+      const ww = mount.clientWidth;
+      const hh = mount.clientHeight;
+      const clampedX = Math.max(SCREEN_CLAMP_MARGIN, Math.min(ww - SCREEN_CLAMP_MARGIN, numberScreen.x));
+      const clampedY = Math.max(SCREEN_CLAMP_MARGIN, Math.min(hh - SCREEN_CLAMP_MARGIN, numberScreen.y));
+
       els.number.style.display = numberScreen.behindCamera ? 'none' : 'flex';
-      els.number.style.left = cx + 'px'; els.number.style.top = cy + 'px';
+      els.number.style.left = `${clampedX}px`;
+      els.number.style.top = `${clampedY}px`;
+
       const toCameraDir = camera.position.clone().sub(worldAnchor).normalize();
-      const facing01 = (worldOutward.dot(toCameraDir) + 1) / 2;
+      const facingDot = worldOutward.dot(toCameraDir);
+      const facing01 = (facingDot + 1) / 2;
       const opacity = numberScreen.behindCamera ? 0 : Math.max(0.25, Math.pow(facing01, 0.5));
       els.anchor.style.opacity = opacity;
       els.line.style.opacity = opacity * 0.8;
       els.number.style.opacity = Math.max(0.55, opacity);
-      els.anchor.style.display = 'block'; els.anchor.style.left = anchorScreen.x + 'px'; els.anchor.style.top = anchorScreen.y + 'px';
-      els.line.setAttribute('x1', anchorScreen.x); els.line.setAttribute('y1', anchorScreen.y);
-      els.line.setAttribute('x2', cx); els.line.setAttribute('y2', cy);
+
+      els.anchor.style.display = 'block';
+      els.anchor.style.left = `${anchorScreen.x}px`;
+      els.anchor.style.top = `${anchorScreen.y}px`;
+
+      els.line.style.display = 'block';
+      els.line.setAttribute('x1', anchorScreen.x);
+      els.line.setAttribute('y1', anchorScreen.y);
+      els.line.setAttribute('x2', clampedX);
+      els.line.setAttribute('y2', clampedY);
     });
   }
 
-  loader.load(MODEL_URL, async (gltf) => {
-    loadResolved = true; clearTimeout(timeoutId); loadingMsg.remove();
-    const model = gltf.scene;
+  function finishModelSetup(model) {
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
+
     const TARGET_WIDTH_FRACTION = 0.63;
     const cameraDistance = camera.position.z;
     const vFov = (camera.fov * Math.PI) / 180;
@@ -698,25 +895,88 @@ html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit
     const visibleWidthAtDistance = visibleHeightAtDistance * camera.aspect;
     const horizontalExtent = Math.max(size.x, size.z);
     const scale = (visibleWidthAtDistance * TARGET_WIDTH_FRACTION) / horizontalExtent;
+
     model.scale.setScalar(scale);
     model.position.sub(center.multiplyScalar(scale));
     model.position.y -= size.y * scale * 0.18;
     modelGroup.add(model);
-    modelBoxForHotspots = new THREE.Box3().setFromObject(model);
+
+    const modelBoxForHotspots = new THREE.Box3().setFromObject(model);
     modelCenterForHotspots = modelBoxForHotspots.getCenter(new THREE.Vector3());
     computeHotspotAnchors(model);
-    try { await applySpecGlossTextureManually(gltf); } catch(e) { console.warn(e); }
-  }, (progress) => {
-    if (progress.total) loadingMsg.textContent = 'Cargando modelo 3D… ' + Math.round((progress.loaded / progress.total) * 100) + '%';
-  }, (err) => {
-    loadResolved = true; clearTimeout(timeoutId);
-    loadingMsg.className = 'error-msg'; loadingMsg.innerHTML = 'No se pudo cargar el modelo 3D.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>';
-  });
+  }
 
-  let isDragging = false, prevX = 0, rotY = 0;
+  if (!MODEL_URL) {
+    // BT: modelo pendiente — placeholder neutro (bandeja ovalada genérica) en vez de
+    // tirar error, así los hotspots y la interacción se pueden validar igual antes
+    // de tener el .glb real. Reemplazar MODEL_URL con assets/bandeja-bronce.glb cuando
+    // el archivo esté subido.
+    loadingMsg.remove();
+    modelPendingNote.style.display = 'block';
+
+    const placeholderGeometry = new THREE.CylinderGeometry(1.1, 1.0, 0.18, 48);
+    const placeholderMaterial = new THREE.MeshStandardMaterial({
+      color: 0xB8B8B8,
+      metalness: MATERIAL_CONFIG.metalness,
+      roughness: MATERIAL_CONFIG.roughness,
+    });
+    const placeholderMesh = new THREE.Mesh(placeholderGeometry, placeholderMaterial);
+    finishModelSetup(placeholderMesh);
+  } else {
+    const loader = new GLTFLoader();
+    let loadResolved = false;
+    const timeoutId = setTimeout(() => {
+      if (!loadResolved) {
+        loadingMsg.className = 'error-msg';
+        loadingMsg.innerHTML = 'El modelo está demorando demasiado o no responde.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>';
+      }
+    }, 15000);
+
+    loader.load(
+      MODEL_URL,
+      async (gltf) => {
+        loadResolved = true;
+        clearTimeout(timeoutId);
+        loadingMsg.remove();
+        const model = gltf.scene;
+        finishModelSetup(model);
+        try {
+          await applySpecGlossTextureManually(gltf);
+        } catch (e) {
+          console.warn('No se pudo aplicar la textura manualmente:', e);
+        }
+      },
+      (progress) => {
+        if (progress.total) {
+          const pct = Math.round((progress.loaded / progress.total) * 100);
+          loadingMsg.textContent = `Cargando modelo 3D… ${pct}%`;
+        }
+      },
+      (err) => {
+        loadResolved = true;
+        clearTimeout(timeoutId);
+        console.error('Error cargando GLB:', err);
+        loadingMsg.className = 'error-msg';
+        loadingMsg.innerHTML = 'No se pudo cargar el modelo 3D.<br><span style="font-size:0.8em;opacity:0.7;">' + MODEL_URL + '</span>';
+      }
+    );
+  }
+
+  // Rotación por arrastre — solo horizontal.
+  let isDragging = false;
+  let prevX = 0;
+  let rotY = 0;
+
   function onDown(x) { isDragging = true; prevX = x; }
-  function onMove(x) { if (!isDragging) return; const dx = x - prevX; rotY += dx * 0.01; modelGroup.rotation.y = rotY; prevX = x; }
+  function onMove(x) {
+    if (!isDragging) return;
+    const dx = x - prevX;
+    rotY += dx * 0.01;
+    modelGroup.rotation.y = rotY;
+    prevX = x;
+  }
   function onUp() { isDragging = false; }
+
   renderer.domElement.addEventListener('mousedown', (e) => onDown(e.clientX));
   window.addEventListener('mousemove', (e) => onMove(e.clientX));
   window.addEventListener('mouseup', onUp);
@@ -726,16 +986,23 @@ html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit
 
   let lastHotspotUpdate = 0;
   const HOTSPOT_UPDATE_INTERVAL = 1000 / 30;
+
   function animate(timestamp) {
     requestAnimationFrame(animate);
-    if (!lastHotspotUpdate || timestamp - lastHotspotUpdate >= HOTSPOT_UPDATE_INTERVAL) { updateHotspotPositions(); lastHotspotUpdate = timestamp; }
+    if (!lastHotspotUpdate || timestamp - lastHotspotUpdate >= HOTSPOT_UPDATE_INTERVAL) {
+      updateHotspotPositions();
+      lastHotspotUpdate = timestamp;
+    }
     renderer.render(scene, camera);
   }
   animate();
 
   window.addEventListener('resize', () => {
-    const nw = mount.clientWidth, nh = mount.clientHeight;
-    camera.aspect = nw / nh; camera.updateProjectionMatrix(); renderer.setSize(nw, nh);
+    const newW = mount.clientWidth;
+    const newH = mount.clientHeight;
+    camera.aspect = newW / newH;
+    camera.updateProjectionMatrix();
+    renderer.setSize(newW, newH);
   });
 </script>
 
