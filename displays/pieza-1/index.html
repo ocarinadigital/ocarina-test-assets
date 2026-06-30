@@ -31,13 +31,14 @@
    sin generar scroll horizontal.
    ===================================================================== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit-font-smoothing: antialiased; }
+html, body { height: 100%; overflow: hidden; touch-action: manipulation; -webkit-font-smoothing: antialiased; background: #FBF6EE; }
 * { touch-action: manipulation; }
 
 .app-root {
   position: fixed;
   inset: 0;
   overflow: hidden;
+  background: #FBF6EE;
 }
 
 /* Cada pantalla ocupa exactamente el 100% y se posiciona con translate.
